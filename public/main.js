@@ -77,7 +77,7 @@ function renderMacroContextChart(chart) {
     const fill = point.estimate || point.disputed ? "var(--panel)" : item.color;
     return `<circle class="${classes}" cx="${point.x}" cy="${point.y}" r="3.4" fill="${esc(fill)}" stroke="${esc(item.color)}"><title>${esc(item.label)} ${esc(point.t)}: ${esc(point.v)}</title></circle>`;
   })).join("");
-  const xLabels = model.ticks.map((tick) => `<text class="macro-axis" x="${tick.x}" y="${model.height - 8}" text-anchor="middle">${esc(tick.label)}</text>`).join("");
+  const xLabels = macroAxisLabels(model.ticks).map((tick) => `<text class="macro-axis" x="${tick.x}" y="${model.height - 8}" text-anchor="middle">${esc(tick.label)}</text>`).join("");
   const legend = model.series.map((item) => `<span><i style="background:${esc(item.color)}"></i>${esc(item.label)}</span>`).join("");
   const flagged = model.series.some((item) => item.points.some((point) => point.estimate || point.disputed));
   const breakdown = chart.id === "hyperscaler-capex" ? renderMacroBreakdown(chart.breakdown2026) : "";
@@ -116,6 +116,33 @@ function formatMacroNumber(value) {
   if (abs >= 100) return String(Math.round(value));
   if (abs >= 10) return value.toFixed(1);
   return value.toFixed(2);
+}
+
+// X-axis labels: for a dense axis (>8 ticks, e.g. a 16-quarter series), collapse to one label per
+// calendar year at that year's first tick (with a min pixel gap) so labels don't overlap. Sparse
+// axes keep their per-point labels. Falls back to raw labels when years aren't parseable.
+function macroAxisLabels(ticks) {
+  if (ticks.length <= 8) return ticks.map((tick) => ({ x: tick.x, label: tick.label }));
+  const yearOf = (label) => {
+    let m = /^(\d{4})/.exec(label);
+    if (m) return Number(m[1]);
+    m = /^[1-4]Q(\d{2})/.exec(label);
+    if (m) return 2000 + Number(m[1]);
+    return null;
+  };
+  const out = [];
+  let lastYear = null;
+  let lastX = -Infinity;
+  for (const tick of ticks) {
+    const year = yearOf(tick.label);
+    if (year === null) continue;
+    if (year !== lastYear && tick.x - lastX >= 28) {
+      out.push({ x: tick.x, label: String(year) });
+      lastYear = year;
+      lastX = tick.x;
+    }
+  }
+  return out.length ? out : ticks.map((tick) => ({ x: tick.x, label: tick.label }));
 }
 async function main() {
   const app = document.getElementById("app");

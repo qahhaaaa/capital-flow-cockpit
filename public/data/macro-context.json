@@ -1,14 +1,15 @@
 {
   "schema": "macro-context/v1",
-  "updatedAt": "2026-06-20",
-  "disclaimer": "手工维护的宏观背景数据,非实时 API。数据点来自公开报道(均标注来源);大科技 capex 为年度合计/指引,OpenAI·Anthropic 为私有公司,ARR 为第三方报道/估算且存在口径争议;存储价为构造指数。仅作 AI 景气背景参考,不进入 cockpit 五层信号/仓位计算。",
+  "updatedAt": "2026-06-29",
+  "disclaimer": "手工维护的宏观背景数据,非实时 API。数据点来自公开报道(均标注来源);大科技 capex 为季度合计(Epoch「Broad CapEx」含融资租赁),OpenAI·Anthropic 为私有公司,ARR 为第三方报道/估算且存在口径争议;存储价为构造指数。仅作 AI 景气背景参考,不进入 cockpit 五层信号/仓位计算。",
   "charts": [
     {
       "id": "hyperscaler-capex",
       "title": "大科技 capex(MSFT/GOOG/AMZN/META 合计)",
-      "unit": "十亿美元 / 年",
-      "note": "AI 数据中心/GPU/电力为主;2026 为指引(同比 +77%)。2026 分项:Amazon ~200、Microsoft ~190(其中 ~25 为内存涨价)、Google 180–190、Meta 115–135。融资动作:Amazon 拟增发股+债(2026 自由现金流转负 ~-17~-28B)、Alphabet 2025 发 25B 债(长期债务翻 4 倍至 46.5B)、OpenAI 募资 122B。2023 四家合计约 155(MSFT 32.3 / Google 28.1 / Amazon 52.7);2022 五家口径(含 Oracle)约 162。",
+      "unit": "十亿美元 / 季度",
+      "note": "四家季度合计;Epoch「Broad CapEx」口径(含融资租赁),按日历季度对齐,取自 SEC 10-Q/10-K。AI 数据中心/GPU/电力为主。数据截至 2025 Q4(Epoch 暂无 2026 季度);2026 全年指引(四家)约 725(+77%),分项见下:Amazon ~200、Microsoft ~190(其中 ~25 为内存涨价)、Google 180–190、Meta 115–135。融资动作:Amazon 拟增发股+债(2026 自由现金流转负 ~-17~-28B)、Alphabet 2025 发 25B 债、OpenAI 募资 122B。口径提示:Broad(含租赁)略高于现金口径,与早前年度数(155/226/410)不完全可比。",
       "sources": [
+        "https://epoch.ai/data-insights/hyperscaler-capex-trend",
         "https://www.tomshardware.com/tech-industry/big-tech/big-techs-ai-spending-plans-reach-725-billion",
         "https://www.cnbc.com/2026/02/06/google-microsoft-meta-amazon-ai-cash.html",
         "https://www.uncoveralpha.com/p/the-market-hates-big-cloud-spending",
@@ -18,10 +19,22 @@
         {
           "label": "合计 capex",
           "points": [
-            { "t": "2023", "v": 155 },
-            { "t": "2024", "v": 226 },
-            { "t": "2025", "v": 410 },
-            { "t": "2026E", "v": 725, "estimate": true }
+            { "t": "1Q22", "v": 36.5 },
+            { "t": "2Q22", "v": 38.2 },
+            { "t": "3Q22", "v": 40.1 },
+            { "t": "4Q22", "v": 40.8 },
+            { "t": "1Q23", "v": 35.2 },
+            { "t": "2Q23", "v": 34.8 },
+            { "t": "3Q23", "v": 38.9 },
+            { "t": "4Q23", "v": 45.4 },
+            { "t": "1Q24", "v": 47.9 },
+            { "t": "2Q24", "v": 58.0 },
+            { "t": "3Q24", "v": 63.9 },
+            { "t": "4Q24", "v": 79.8 },
+            { "t": "1Q25", "v": 76.4 },
+            { "t": "2Q25", "v": 96.4 },
+            { "t": "3Q25", "v": 108.2 },
+            { "t": "4Q25", "v": 127.6 }
           ]
         }
       ],
