@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>资金流向与轮动驾驶舱</title>
+    <style>
+      :root {
+        --bg: #0e1116; --panel: #161b22; --line: #2a3340; --txt: #e6edf3; --muted: #8b949e;
+        --up: #3fb950; --down: #f85149; --warn: #d29922; --flat: #6e7681; --accent: #58a6ff;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--txt);
+        font: 14px/1.5 -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+      .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 16px 56px; }
+      h1 { font-size: 20px; margin: 0 0 2px; }
+      .sub { color: var(--muted); font-size: 12px; }
+      .advisory { margin: 12px 0 18px; padding: 8px 12px; border: 1px solid var(--warn);
+        border-radius: 8px; color: var(--warn); font-size: 12px; background: rgba(210,153,34,.08); }
+      .grid { display: grid; gap: 14px; }
+      @media (min-width: 760px) { .two { grid-template-columns: 1fr 1fr; } }
+      .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+      .panel h2 { font-size: 13px; letter-spacing: .04em; color: var(--muted);
+        text-transform: uppercase; margin: 0 0 10px; font-weight: 600; }
+      .regime { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+      .badge { padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: 13px; border: 1px solid var(--line); }
+      .b-risk_on { color: var(--up); border-color: var(--up); }
+      .b-risk_off { color: var(--down); border-color: var(--down); }
+      .b-neutral { color: var(--txt); }
+      .b-unknown { color: var(--muted); }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .num { text-align: right; font-variant-numeric: tabular-nums; }
+      .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--flat); } .muted { color: var(--muted); }
+      .tier { font-weight: 700; padding: 2px 8px; border-radius: 6px; display: inline-block; }
+      .tier-standard { color: #03150a; background: var(--up); }
+      .tier-small { color: var(--up); border: 1px solid var(--up); }
+      .tier-probe { color: var(--warn); border: 1px solid var(--warn); }
+      .tier-flat { color: var(--flat); border: 1px solid var(--flat); }
+      .q { font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); color: var(--muted); }
+      .q-ok { color: var(--up); border-color: var(--up); }
+      .q-partial { color: var(--warn); border-color: var(--warn); }
+      .q-missing { color: var(--down); border-color: var(--down); }
+      .tags { color: var(--muted); font-size: 12px; }
+      .err { color: var(--down); }
+      .edge { color: var(--accent); }
+      .macro-context { margin-bottom: 14px; }
+      .macro-context-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+      .macro-chart-grid { display: grid; gap: 12px; }
+      @media (min-width: 960px) { .macro-chart-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+      .macro-chart-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px; min-width: 0; }
+      .macro-chart-title { min-height: 42px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+      .macro-svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
+      .macro-line { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+      .macro-grid-line { stroke: var(--line); stroke-width: 1; }
+      .macro-axis { fill: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+      .macro-point { fill: var(--panel); stroke-width: 2; }
+      .macro-point:not(.estimate):not(.disputed) { fill: currentColor; }
+      .macro-point.disputed { stroke-dasharray: 3 2; }
+      .macro-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; font-size: 11px; color: var(--muted); }
+      .macro-legend span { display: inline-flex; align-items: center; gap: 5px; }
+      .macro-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+      .macro-flag-note { margin-top: 4px; font-size: 11px; }
+      .macro-note { margin: 8px 0 0; font-size: 11px; }
+      .macro-breakdown { margin-top: 8px; display: grid; gap: 4px; font-size: 11px; }
+      .macro-break-row { display: grid; grid-template-columns: 62px 1fr 38px; align-items: center; gap: 6px; }
+      .macro-break-row div { height: 6px; border-radius: 999px; background: rgba(139,148,158,.18); overflow: hidden; }
+      .macro-break-row b { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+      .macro-context-foot { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; display: grid; gap: 6px; font-size: 11px; }
+      .macro-context-foot a { color: var(--accent); text-decoration: none; margin-left: 6px; }
+      footer { color: var(--muted); font-size: 11px; margin-top: 18px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>资金流向与轮动驾驶舱 <span class="sub">cockpit/v2</span></h1>
+      <div id="app"><p class="muted">加载中…</p></div>
+    </div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

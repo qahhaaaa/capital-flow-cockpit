@@ -1,0 +1,105 @@
+{
+  "schema": "macro-context/v1",
+  "updatedAt": "2026-06-20",
+  "disclaimer": "手工维护的宏观背景数据,非实时 API。数据点来自公开报道(均标注来源);大科技 capex 为年度合计/指引,OpenAI·Anthropic 为私有公司,ARR 为第三方报道/估算且存在口径争议;存储价为构造指数。仅作 AI 景气背景参考,不进入 cockpit 五层信号/仓位计算。",
+  "charts": [
+    {
+      "id": "hyperscaler-capex",
+      "title": "大科技 capex(MSFT/GOOG/AMZN/META 合计)",
+      "unit": "十亿美元 / 年",
+      "note": "AI 数据中心/GPU/电力为主;2026 为指引(同比 +77%)。2026 分项:Amazon ~200、Microsoft ~190(其中 ~25 为内存涨价)、Google 180–190、Meta 115–135。融资动作:Amazon 拟增发股+债(2026 自由现金流转负 ~-17~-28B)、Alphabet 2025 发 25B 债(长期债务翻 4 倍至 46.5B)、OpenAI 募资 122B。2023 四家合计约 155(MSFT 32.3 / Google 28.1 / Amazon 52.7);2022 五家口径(含 Oracle)约 162。",
+      "sources": [
+        "https://www.tomshardware.com/tech-industry/big-tech/big-techs-ai-spending-plans-reach-725-billion",
+        "https://www.cnbc.com/2026/02/06/google-microsoft-meta-amazon-ai-cash.html",
+        "https://www.uncoveralpha.com/p/the-market-hates-big-cloud-spending",
+        "https://www.visualcapitalist.com/visualized-big-tech-ai-spending/"
+      ],
+      "series": [
+        {
+          "label": "合计 capex",
+          "points": [
+            { "t": "2023", "v": 155 },
+            { "t": "2024", "v": 226 },
+            { "t": "2025", "v": 410 },
+            { "t": "2026E", "v": 725, "estimate": true }
+          ]
+        }
+      ],
+      "breakdown2026": [
+        { "name": "Amazon", "v": 200 },
+        { "name": "Microsoft", "v": 190 },
+        { "name": "Google", "v": 185 },
+        { "name": "Meta", "v": 125 }
+      ]
+    },
+    {
+      "id": "ai-arr",
+      "title": "OpenAI / Anthropic 年化收入(ARR)",
+      "unit": "十亿美元(年化运行率)",
+      "note": "ARR=年化运行率,非当年确认收入。OpenAI 口径剔除微软授权与一次性大单;Anthropic 2026-04 的 30B 存在 gross-vs-net 争议(OpenAI 称高估约 8B),第三方(Sacra/SemiAnalysis)对 5 月估值更高(44–47B),已标 disputed。OpenAI 2026 春季在 ~24–25B 平台(~$2B/月;Jun'25 $10B → Mar'26 >$25B,Reuters),增速放缓、被 Anthropic 反超。",
+      "sources": [
+        "https://www.pymnts.com/artificial-intelligence-2/2026/openais-annual-recurring-revenue-tripled-to-20-billion-in-2025/",
+        "https://sacra.com/c/openai/",
+        "https://valueaddvc.com/blog/openai-revenue-2026-20b-arr-4b-month-path-to-profitability",
+        "https://venturebeat.com/technology/anthropic-says-it-hit-a-30-billion-revenue-run-rate-after-crazy-80x-growth",
+        "https://sacra.com/c/anthropic/"
+      ],
+      "series": [
+        {
+          "label": "OpenAI",
+          "points": [
+            { "t": "2023-12", "v": 2 },
+            { "t": "2024-12", "v": 6 },
+            { "t": "2025-07", "v": 12 },
+            { "t": "2025-12", "v": 20 },
+            { "t": "2026-02", "v": 25 }
+          ]
+        },
+        {
+          "label": "Anthropic",
+          "points": [
+            { "t": "2024-01", "v": 0.087 },
+            { "t": "2024-12", "v": 1 },
+            { "t": "2025-12", "v": 9 },
+            { "t": "2026-02", "v": 14 },
+            { "t": "2026-03", "v": 19 },
+            { "t": "2026-04", "v": 30 },
+            { "t": "2026-05", "v": 45, "disputed": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "memory-price",
+      "title": "存储合约价(NAND / DRAM 指数)",
+      "unit": "指数 100 = 3Q25",
+      "note": "构造自 TrendForce 季度合约价中值 QoQ 增幅(NAND:+7.5% / +57.5% / +72.5%;DRAM:+10.5% / +92.5% / +60.5%)。AI/企业级 SSD 拉动的结构性短缺,1H26 累计 >100%,新产能 2027–2028 前难放量;2Q26 NAND 涨幅首次超过 DRAM。2Q26 为预测。2025-11 单月 512Gb TLC +65%;2026 NAND 需求 +20–22% vs 供给 +15–17%。",
+      "sources": [
+        "https://www.trendforce.com/presscenter/news/20250925-12736.html",
+        "https://www.trendforce.com/presscenter/news/20260202-12911.html",
+        "https://www.tomshardware.com/pc-components/dram/dram-and-nand-contract-prices-to-climb-again-in-q2",
+        "https://www.trendforce.com/presscenter/news/20260616-13102.html"
+      ],
+      "series": [
+        {
+          "label": "NAND",
+          "points": [
+            { "t": "3Q25", "v": 100 },
+            { "t": "4Q25", "v": 107.5 },
+            { "t": "1Q26", "v": 169.3 },
+            { "t": "2Q26E", "v": 292.1, "estimate": true }
+          ]
+        },
+        {
+          "label": "DRAM",
+          "points": [
+            { "t": "3Q25", "v": 100 },
+            { "t": "4Q25", "v": 110.5 },
+            { "t": "1Q26", "v": 212.7 },
+            { "t": "2Q26E", "v": 341.4, "estimate": true }
+          ]
+        }
+      ]
+    }
+  ]
+}
