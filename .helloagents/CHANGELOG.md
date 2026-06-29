@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-06-29
+
+- **GitHub Actions 定时采集 + Pages 托管**: 新增 `collect-and-deploy.yml`,schedule(cron 每 4h)+ workflow_dispatch + push 触发;步骤 checkout → setup-node@v4(node 22)→ `npm test` 门禁 → `node scripts/collect-cockpit.mjs` 直连采集 → 把 `cockpit.json`/`cockpit-history.json` commit 回 main 累积滚动历史 → upload-pages-artifact + deploy-pages 部署 `public/`。零 secret / 零代理 / 零新依赖(仅官方 actions);OKX 在美区 runner 多半 451,靠现有失败隔离标 L4 `missing` 且 workflow 不失败(已本地注入 loadDexCex 抛错验证 collectCockpit 仍 resolve、CLI exit 0)。防自我触发:push.paths-ignore 忽略两数据文件 + 提交信息 `[skip ci]` + 默认 GITHUB_TOKEN 推送不再触发新 run。`.gitignore` 放行 `public/data/cockpit*.json`。前端 `./data/...` 为文档相对路径(无 `<base>`),在 Pages 子路径下解析正确,无需改动。类型: 新增/修改。文件: `.github/workflows/collect-and-deploy.yml`, `.gitignore`, `docs/project-handover.md`。
+
 ## 2026-06-22
 
 - **App 收入热度辅助信号**: 新增 cockpit/v2 顶层 `appRevenueHeat` side-channel，按 DeFiLlama chain fees 采集各链协议 24h revenue 排名，标注活动热度而非流动性/净流入；前端新增辅助面板，低份额动量去噪并标记单协议 spike。类型: 新增/修改。文件: `src/cockpit/layers/app-revenue.mjs`, `src/cockpit/providers/app-revenue.mjs`, `scripts/collect-cockpit.mjs`, `src/cockpit/contract.mjs`, `public/main.js`, `tests/cockpit-app-revenue.test.mjs`, `tests/cockpit-provider-app-revenue.test.mjs`, `README.md`, `docs/PRD-capital-flow-cockpit.md`。

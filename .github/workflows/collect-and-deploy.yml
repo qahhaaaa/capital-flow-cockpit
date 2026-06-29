@@ -1,0 +1,94 @@
+# 定时采集 cockpit/v2 资金流数据 + 部署静态面板到 GitHub Pages。
+# 设计要点 / 约束详见 docs/project-handover.md 第 11 节。
+#
+# - 零 secret：采集只用免费无 key API（FRED / DeFiLlama / OKX / CoinGecko），无需任何 repo secret。
+# - 零代理：云端 runner 直连可达；src/cockpit/providers/http.mjs 的 getJsonViaProxy 在没有
+#   HTTPS_PROXY 时自动走直连，因此这里不设置任何代理 env。
+# - OKX 封美国 IP：GitHub 托管 runner 多在美国/Azure → L4(OKX 衍生品) 可能 451 / 被拒。
+#   这是预期内：scripts/collect-cockpit.mjs 对每个数据源做失败隔离，OKX 失败时 L4 标 missing、
+#   其余四层照常，脚本仍 exit 0 → 本 workflow 不会因此失败。要补 L4 需用非美 self-hosted runner。
+# - 历史持久化：链间轮动 / 百分位依赖 public/data/cockpit-history.json。runner 是临时环境，
+#   必须每次把它（连同 cockpit.json）commit 回 main 才能跨 run 累积 → .gitignore 已放行这两个文件。
+# - 防自我触发：本 workflow 既被 push:main 触发、又把数据 commit 回 main，存在自我循环风险。
+#   三重防护：① 下方 push.paths-ignore 忽略这两个数据文件 ② 提交信息带 [skip ci]
+#   ③ 用默认 GITHUB_TOKEN 推送（GitHub 设计上不会再触发新 run）。
+# - GitHub Pages 公开可读：面板（行情 + 仓位建议）将全网可见；不含密钥 / PII。
+
+name: collect-and-deploy
+
+on:
+  schedule:
+    # 每 4 小时（UTC：00/04/08/12/16/20 点）。GitHub 定时为 best-effort，高峰期可能延迟数分钟。
+    - cron: "0 */4 * * *"
+  workflow_dispatch: {} # 手动触发（仓库 Actions 页面 "Run workflow"）
+  push:
+    branches: [main]
+    paths-ignore:
+      # 只忽略 bot 自己回写的两个数据文件 → 数据回写不会自我触发；
+      # 改代码 / public/ 其它内容 / macro-context.json 仍会触发部署。
+      # 注意：paths-ignore 只作用于 push，schedule 与 workflow_dispatch 不受影响，照常运行。
+      - "public/data/cockpit.json"
+      - "public/data/cockpit-history.json"
+
+# 串行化：同一时刻只跑一个，避免数据回写 push 竞争 + Pages 并发部署冲突。
+# cancel-in-progress: false → 不打断正在进行的部署。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write # 把刷新后的数据文件 commit 回仓库（历史累积）
+  pages: write # 部署到 GitHub Pages
+  id-token: write # actions/deploy-pages 的 OIDC 鉴权
+
+jobs:
+  collect-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          # 不开启 npm cache：本项目零依赖、无 package-lock.json，开 cache 会因找不到 lockfile 报错。
+
+      # 零依赖、无 lockfile → 不需要 npm ci / npm install（npm ci 反而会因缺 lockfile 失败）。
+      # npm test 失败即非零退出 → 本步骤失败 → 后续步骤全部跳过（采集/部署中止）。
+      - name: Run unit tests (gate)
+        run: npm test
+
+      # 直连采集（无代理 env）。单源失败被脚本隔离，整体仍 exit 0；L4/OKX 在美区 runner 多半 missing。
+      - name: Collect cockpit snapshot
+        run: node scripts/collect-cockpit.mjs
+
+      # 把刷新后的数据文件回写 main，让 cockpit-history.json 跨 run 累积。
+      # 仅在确有变化时提交；[skip ci] + 上面的 paths-ignore 共同防止自我触发。
+      - name: Commit refreshed data back to main (rolling history)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/cockpit.json public/data/cockpit-history.json
+          if git diff --staged --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "chore(data): refresh cockpit snapshot + rolling history [skip ci]"
+            git push
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # 部署整个 public/（含刚生成的 cockpit.json/cockpit-history.json 与入库的 macro-context.json）。
+      - name: Upload public/ as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

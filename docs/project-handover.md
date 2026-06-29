@@ -102,3 +102,20 @@ public/data/cockpit.json         # 采集生成(不入库)
 - [ ] `.env` 保存 GMGN/Dune 等 key,**不进仓库**(已 gitignore);代理在 `127.0.0.1:7897` 时 L4/mindshare 才有数。
 - [ ] 数据缺失处显示 missing/partial,不应出现 0 冒充。
 - [ ] 对照 `docs/PRD-capital-flow-cockpit.md` 理解设计边界。
+
+## 11. 部署:GitHub Actions + GitHub Pages(已实施 2026-06-29)
+
+**形态**:GitHub Actions(cron 每 4h 跑 `npm run collect`)+ GitHub Pages(托管静态前端 + 生成的 JSON)。Actions 是定时跑批,**不是常驻服务器**;这条路对应"静态部署 + 外部 cron 生成 JSON"。
+
+**适配性**:无依赖、无构建、**无 secret**(采集只用免费无 key API:FRED/DeFiLlama/OKX/CoinGecko)→ 天然适合。
+
+**要点 / 约束**:
+- workflow:`schedule` cron 每 4h + `workflow_dispatch` + push;步骤 checkout → setup-node@v4(node 22) → `npm test` → `node scripts/collect-cockpit.mjs` → **commit `public/data/cockpit.json` + `cockpit-history.json` 回仓库** → 部署 `public/` 到 Pages。
+- **历史持久化(关键)**:Actions 每次是临时环境,链间轮动/百分位依赖 `cockpit-history.json`,必须每次 commit 回仓库才能累积 → 需**放行 `.gitignore`**(当前忽略了 `public/data/cockpit*.json`),或改用单独 data 分支存数据。
+- **代理**:云端 runner 在境外,直连可达,**不用本机的 7897 代理**(`getJsonViaProxy` 无 `HTTPS_PROXY` 时自动直连)。
+- **⚠️ OKX 封美国 IP**:GitHub 托管 runner 多在美国/Azure → L4(OKX)可能 451/被拒 → 接受 **L4 标 missing**(其余四层正常),workflow 不应因此失败;要云上补 L4 得用**非美 self-hosted runner**。DeFiLlama/FRED/CoinGecko 不受影响。
+- **GitHub Pages 公开可见**(无密钥泄露风险,但面板公开);前端 `fetch('./data/...')` 为文档相对路径(`index.html` 无 `<base>`,`<script src="./main.js">`),在 Pages 子路径 `user.github.io/<repo>/` 下解析为 `.../<repo>/data/...`,**已确认无需改动**。
+- **前置**:本仓库目前**无 remote**,需先建 GitHub repo → `git remote add origin` → push;Pages 设置里 Source 选 "GitHub Actions"。
+
+> **已实施**:见 `.github/workflows/collect-and-deploy.yml`(单 job:`npm test` → collect → commit 数据回 main → 部署 Pages;`concurrency: pages` 串行化)。防自我触发三重防护:`push.paths-ignore` 忽略两数据文件 + 提交 `[skip ci]` + 默认 `GITHUB_TOKEN`。OKX 失败隔离已本地验证(L4 标 missing、collectCockpit 不抛错、exit 0)。
+> **启用前置(需手动)**:① GitHub 建 repo → `git remote add origin <url>` → `git push -u origin main`;② Settings → Pages → Source 选 **"GitHub Actions"**;③ 之后可在 Actions 页 "Run workflow" 手动 dispatch 验证。
