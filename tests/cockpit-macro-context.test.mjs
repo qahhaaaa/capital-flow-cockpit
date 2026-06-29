@@ -81,3 +81,15 @@ test("buildMacroChartModel orders x ticks chronologically across formats and mis
   });
   assert.deepEqual(arr.ticks.map((t) => t.label), ["2023-12", "2024-01", "2025-07", "2026-02", "2026-04"]);
 });
+
+test("buildMacroChartModel positions points by real elapsed time, not even ordinal spacing", () => {
+  // gaps: 2020-01 -> 2021-01 is 12 months; 2021-01 -> 2021-02 is 1 month.
+  const model = buildMacroChartModel({
+    id: "t",
+    series: [{ label: "X", points: [{ t: "2020-01", v: 1 }, { t: "2021-01", v: 2 }, { t: "2021-02", v: 3 }] }],
+  });
+  const [p1, p2, p3] = model.series[0].points;
+  const gapA = p2.x - p1.x; // 12 months
+  const gapB = p3.x - p2.x; // 1 month
+  assert.ok(gapA > gapB * 6, `expected 12-month gap (${gapA}) to dwarf 1-month gap (${gapB})`);
+});

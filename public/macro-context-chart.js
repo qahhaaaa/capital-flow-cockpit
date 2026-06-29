@@ -13,10 +13,23 @@ export function buildMacroChartModel(chart, options = {}) {
   const values = collectValues(chart.series ?? []);
   const [yMin, yMax] = paddedRange(values);
 
+  // Position points by REAL elapsed time (month index via tickKey), not by ordinal index,
+  // so a 1-year gap renders wider than a 1-month gap. Falls back to even ordinal spacing
+  // when there is no real time span (single tick, or all labels unparseable).
+  const tickInfo = new Map(ticks.map((tick, index) => [tick.label, { index, key: tickKey(tick.label) }]));
+  const parsedKeys = ticks.map((tick) => tickKey(tick.label)).filter((key) => key < Number.MAX_SAFE_INTEGER);
+  const minKey = parsedKeys.length ? Math.min(...parsedKeys) : 0;
+  const maxKey = parsedKeys.length ? Math.max(...parsedKeys) : 0;
+  const timeSpan = maxKey - minKey;
+
   const xFor = (label) => {
-    const index = ticks.findIndex((tick) => tick.label === label);
     if (ticks.length <= 1) return margin.left + plotWidth / 2;
-    return margin.left + (Math.max(0, index) / (ticks.length - 1)) * plotWidth;
+    const info = tickInfo.get(label);
+    if (timeSpan > 0 && info && info.key < Number.MAX_SAFE_INTEGER) {
+      return margin.left + ((info.key - minKey) / timeSpan) * plotWidth;
+    }
+    // fallback: even ordinal spacing
+    return margin.left + (Math.max(0, info ? info.index : 0) / (ticks.length - 1)) * plotWidth;
   };
   const yFor = (value) => margin.top + ((yMax - value) / (yMax - yMin)) * plotHeight;
 
