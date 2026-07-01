@@ -1,7 +1,7 @@
 {
   "schema": "cockpit/v2",
   "meta": {
-    "generatedAt": "2026-07-01T14:31:34.446Z",
+    "generatedAt": "2026-07-01T17:53:16.037Z",
     "historyPoints": 180
   },
   "regime": "risk_off",
@@ -39,58 +39,50 @@
     },
     "chain": {
       "layer": "chain",
-      "direction": "rotating",
-      "strength": 13.5,
+      "direction": "stable",
+      "strength": 94.4,
       "confidence": "high",
       "components": [
         {
           "chain": "solana",
           "label": "SOL",
-          "shareNow": 4.9532,
-          "shareDeltaPp": 0.0041,
+          "shareNow": 4.9411,
+          "shareDeltaPp": -0.0121,
           "direction": "flat",
-          "strength": 65.4,
+          "strength": 82.7,
           "dataQuality": "ok"
         },
         {
           "chain": "base",
           "label": "Base",
-          "shareNow": 1.5882,
-          "shareDeltaPp": -0.0009,
+          "shareNow": 1.593,
+          "shareDeltaPp": 0.0048,
           "direction": "flat",
-          "strength": 67.6,
+          "strength": 94.4,
           "dataQuality": "ok"
         },
         {
           "chain": "ethereum",
           "label": "ETH 主网",
-          "shareNow": 50.4887,
-          "shareDeltaPp": 0.1087,
-          "direction": "inflow",
-          "strength": 99.4,
+          "shareNow": 50.4885,
+          "shareDeltaPp": -0.0002,
+          "direction": "flat",
+          "strength": 40.2,
           "dataQuality": "ok"
         },
         {
           "chain": "bsc",
           "label": "BSC",
-          "shareNow": 4.5097,
-          "shareDeltaPp": -0.1614,
-          "direction": "outflow",
-          "strength": 99.4,
+          "shareNow": 4.5101,
+          "shareDeltaPp": 0.0004,
+          "direction": "flat",
+          "strength": 57.5,
           "dataQuality": "ok"
         }
       ],
-      "rotationEdges": [
-        {
-          "from": "bsc",
-          "to": "ethereum",
-          "type": "chain",
-          "strength": 13.5,
-          "confidence": "high"
-        }
-      ],
+      "rotationEdges": [],
       "drivers": [
-        "BSC → ETH 主网 稳定币份额迁移"
+        "四链稳定币份额无显著迁移"
       ],
       "dataQuality": "ok"
     },
@@ -107,7 +99,7 @@
           "revenue24h": 691279,
           "revenue7d": 4319077,
           "revenueAllTime": 1050855883,
-          "share": 92.6,
+          "share": 92.5,
           "momentum": 0.12,
           "direction": "heating",
           "strength": 12,
@@ -117,13 +109,13 @@
           "launchpad": "letsbonk",
           "label": "LetsBonk/BONK.fun",
           "chain": "solana",
-          "revenue24h": 10537,
+          "revenue24h": 11506,
           "revenue7d": 50610,
-          "revenueAllTime": 38555054,
-          "share": 1.4,
-          "momentum": 0.457,
+          "revenueAllTime": 38556023,
+          "share": 1.5,
+          "momentum": 0.591,
           "direction": "heating",
-          "strength": 46,
+          "strength": 59,
           "dataQuality": "ok"
         },
         {
@@ -169,7 +161,7 @@
       "byChain": [
         {
           "chain": "solana",
-          "revenue24h": 720524,
+          "revenue24h": 721493,
           "share": 96.5
         },
         {
@@ -182,9 +174,9 @@
         "launchpad": "pumpfun",
         "label": "pump.fun",
         "revenue24h": 691279,
-        "share": 92.6
+        "share": 92.5
       },
-      "totalRevenue24h": 746745,
+      "totalRevenue24h": 747714,
       "rotationEdges": [
         {
           "from": "believe",
@@ -201,168 +193,160 @@
     },
     "narrative": {
       "layer": "narrative",
-      "direction": "rotating",
+      "direction": "flat",
       "strength": 100,
       "confidence": "high",
       "components": [
         {
           "sector": "CEX",
-          "tvl": 231631997586,
-          "change7dPct": -4.09,
-          "direction": "rotate_out",
-          "strength": 62.5,
-          "dataQuality": "ok"
-        },
-        {
-          "sector": "Bridge",
-          "tvl": 43260113431,
-          "change7dPct": -3.97,
-          "direction": "rotate_out",
-          "strength": 50,
-          "dataQuality": "ok"
-        },
-        {
-          "sector": "Lending",
-          "tvl": 35943393153,
-          "change7dPct": -1.37,
-          "direction": "flat",
-          "strength": 12.5,
-          "dataQuality": "ok"
-        },
-        {
-          "sector": "Liquid Staking",
-          "tvl": 30457249666,
-          "change7dPct": -3.48,
-          "direction": "rotate_out",
-          "strength": 37.5,
-          "dataQuality": "ok"
-        },
-        {
-          "sector": "RWA",
-          "tvl": 25061402545,
-          "change7dPct": -2,
+          "tvl": 234979707167,
+          "change7dPct": -0.73,
           "direction": "flat",
           "strength": 25,
           "dataQuality": "ok"
         },
         {
+          "sector": "Bridge",
+          "tvl": 43876048709,
+          "change7dPct": -1.15,
+          "direction": "flat",
+          "strength": 50,
+          "dataQuality": "ok"
+        },
+        {
+          "sector": "Lending",
+          "tvl": 36644151722,
+          "change7dPct": 2.08,
+          "direction": "rotate_in",
+          "strength": 87.5,
+          "dataQuality": "ok"
+        },
+        {
+          "sector": "Liquid Staking",
+          "tvl": 31361283446,
+          "change7dPct": 1.99,
+          "direction": "flat",
+          "strength": 75,
+          "dataQuality": "ok"
+        },
+        {
+          "sector": "RWA",
+          "tvl": 25157718052,
+          "change7dPct": -1.13,
+          "direction": "flat",
+          "strength": 37.5,
+          "dataQuality": "ok"
+        },
+        {
           "sector": "Dexs",
-          "tvl": 11105252147,
-          "change7dPct": 316375896739.04,
+          "tvl": 11219367648,
+          "change7dPct": 313157944094.33,
           "direction": "rotate_in",
           "strength": 100,
           "dataQuality": "ok"
         },
         {
           "sector": "Staking Pool",
-          "tvl": 8787133183,
-          "change7dPct": -5.27,
-          "direction": "rotate_out",
-          "strength": 75,
+          "tvl": 9044448658,
+          "change7dPct": -0.2,
+          "direction": "flat",
+          "strength": 12.5,
           "dataQuality": "ok"
         },
         {
           "sector": "Restaking",
-          "tvl": 7814147364,
-          "change7dPct": -7.01,
-          "direction": "rotate_out",
-          "strength": 87.5,
+          "tvl": 8021496898,
+          "change7dPct": -1.41,
+          "direction": "flat",
+          "strength": 62.5,
           "dataQuality": "ok"
         }
       ],
-      "rotationEdges": [
-        {
-          "from": "Restaking",
-          "to": "Dexs",
-          "type": "sector",
-          "strength": 100,
-          "confidence": "medium"
-        }
-      ],
+      "rotationEdges": [],
       "drivers": [
         "Dexs 板块资金轮入"
       ],
       "mindshare": {
         "trendingCoins": [
           {
-            "symbol": "TAIKO",
-            "name": "Taiko",
-            "marketCapRank": 711,
-            "change24hPct": 77
+            "symbol": "VVV",
+            "name": "Venice Token",
+            "marketCapRank": 91,
+            "change24hPct": 12
           },
           {
-            "symbol": "MORPHO",
-            "name": "Morpho",
-            "marketCapRank": 54,
-            "change24hPct": 13
+            "symbol": "PENGU",
+            "name": "Pudgy Penguins",
+            "marketCapRank": 118,
+            "change24hPct": 3
           },
           {
             "symbol": "JUP",
             "name": "Jupiter",
-            "marketCapRank": 78,
-            "change24hPct": 15
-          },
-          {
-            "symbol": "ANSEM",
-            "name": "The Black Bull",
-            "marketCapRank": 404,
-            "change24hPct": -11
-          },
-          {
-            "symbol": "SYN",
-            "name": "Synapse",
-            "marketCapRank": 254,
-            "change24hPct": -26
-          },
-          {
-            "symbol": "FLUID",
-            "name": "Fluid",
-            "marketCapRank": 295,
-            "change24hPct": 26
-          },
-          {
-            "symbol": "AAVE",
-            "name": "Aave",
-            "marketCapRank": 58,
-            "change24hPct": 0
-          },
-          {
-            "symbol": "SOL",
-            "name": "Solana",
-            "marketCapRank": 7,
-            "change24hPct": 5
-          },
-          {
-            "symbol": "BP",
-            "name": "Backpack",
-            "marketCapRank": 193,
-            "change24hPct": 14
+            "marketCapRank": 79,
+            "change24hPct": 13
           },
           {
             "symbol": "BTC",
             "name": "Bitcoin",
             "marketCapRank": 1,
+            "change24hPct": 3
+          },
+          {
+            "symbol": "SOL",
+            "name": "Solana",
+            "marketCapRank": 7,
+            "change24hPct": 6
+          },
+          {
+            "symbol": "MORPHO",
+            "name": "Morpho",
+            "marketCapRank": 55,
+            "change24hPct": 10
+          },
+          {
+            "symbol": "ANSEM",
+            "name": "The Black Bull",
+            "marketCapRank": 394,
+            "change24hPct": -8
+          },
+          {
+            "symbol": "AAVE",
+            "name": "Aave",
+            "marketCapRank": 58,
+            "change24hPct": 1
+          },
+          {
+            "symbol": "KAS",
+            "name": "Kaspa",
+            "marketCapRank": 75,
             "change24hPct": 2
+          },
+          {
+            "symbol": "TAIKO",
+            "name": "Taiko",
+            "marketCapRank": 732,
+            "change24hPct": 59
           }
         ],
         "trendingCategories": [
           {
-            "name": "Automated Market Maker (AMM)"
-          },
-          {
-            "name": "Index Coop Defi Index"
+            "name": "Proof of Work (PoW)"
           },
           {
             "name": "CoinList Launchpad"
           },
           {
-            "name": "Neobank"
+            "name": "Centralized Exchange (CEX) Token"
           },
           {
-            "name": "Decentralized Exchange (DEX)"
+            "name": "Base Native"
           },
           {
-            "name": "Pump.fun Ecosystem"
+            "name": "Index Coop Defi Index"
+          },
+          {
+            "name": "Derivatives"
           }
         ],
         "source": "coingecko-trending",
@@ -373,30 +357,30 @@
     "dexCex": {
       "layer": "dexCex",
       "direction": "to_perp",
-      "strength": 3,
+      "strength": 4,
       "confidence": "high",
       "crowding": "normal",
-      "perpSpotRatio": 17.93,
+      "perpSpotRatio": 18.97,
       "components": [
         {
           "symbol": "BTC",
-          "funding": 0.0000213550200673,
-          "perpSpot": 12.64
+          "funding": 0.0000842315231912,
+          "perpSpot": 13.69
         },
         {
           "symbol": "ETH",
-          "funding": 0.0000382595799396,
-          "perpSpot": 35.25
+          "funding": -0.0000095061698782,
+          "perpSpot": 33.37
         },
         {
           "symbol": "SOL",
-          "funding": 0.0000612653753874,
-          "perpSpot": 16.05
+          "funding": -0.0000016858092233,
+          "perpSpot": 15.87
         },
         {
           "symbol": "BNB",
-          "funding": 5.324409296e-7,
-          "perpSpot": 9.43
+          "funding": 0.0001,
+          "perpSpot": 9.79
         }
       ],
       "rotationEdges": [],
@@ -411,25 +395,11 @@
     "moneyLocation": "偏 CEX 合约(投机/杠杆主导)",
     "rotationEdges": [
       {
-        "from": "bsc",
-        "to": "ethereum",
-        "type": "chain",
-        "strength": 13.5,
-        "confidence": "high"
-      },
-      {
         "from": "believe",
         "to": "moonshot",
         "type": "launchpad",
         "strength": 100,
         "confidence": "high"
-      },
-      {
-        "from": "Restaking",
-        "to": "Dexs",
-        "type": "sector",
-        "strength": 100,
-        "confidence": "medium"
       }
     ],
     "agreement": {
@@ -490,17 +460,12 @@
         {
           "layer": "dexCex",
           "reason": "资金涌向合约",
-          "pts": 0.006
+          "pts": 0.008
         }
       ],
-      "headwindLayers": [
-        {
-          "layer": "chain",
-          "reason": "BSC 链上资金净流出"
-        }
-      ],
+      "headwindLayers": [],
       "riskFlags": [],
-      "rationale": "仓位档:空仓 · 顺风:dexCex · 逆风:chain · 宏观收水,整体压制",
+      "rationale": "仓位档:空仓 · 顺风:dexCex · 宏观收水,整体压制",
       "dataQuality": "ok"
     }
   ],
@@ -513,13 +478,13 @@
         "chain": "solana",
         "label": "SOL",
         "dataQuality": "ok",
-        "totalRevenue24h": 3602855,
+        "totalRevenue24h": 3621089,
         "topApps": [
           {
             "protocol": "pump.fun",
             "revenue24h": 691279,
             "revenue7d": 4319077,
-            "share": 19.2,
+            "share": 19.1,
             "momentum": 0.12,
             "direction": "heating"
           },
@@ -527,7 +492,7 @@
             "protocol": "Axiom",
             "revenue24h": 459458,
             "revenue7d": 1701054,
-            "share": 12.8,
+            "share": 12.7,
             "momentum": 0.891,
             "direction": "heating"
           },
@@ -560,7 +525,7 @@
         "dominantApp": {
           "protocol": "pump.fun",
           "revenue24h": 691279,
-          "share": 19.2
+          "share": 19.1
         },
         "singleAppSpike": false
       },
@@ -568,37 +533,37 @@
         "chain": "base",
         "label": "Base",
         "dataQuality": "ok",
-        "totalRevenue24h": 516264,
+        "totalRevenue24h": 523445,
         "topApps": [
           {
             "protocol": "Aerodrome Slipstream",
-            "revenue24h": 171562,
+            "revenue24h": 175730,
             "revenue7d": 911678,
-            "share": 33.2,
-            "momentum": 0.317,
+            "share": 33.6,
+            "momentum": 0.349,
             "direction": "heating"
           },
           {
             "protocol": "Base",
             "revenue24h": 57127,
             "revenue7d": 713971,
-            "share": 11.1,
+            "share": 10.9,
             "momentum": -0.44,
             "direction": "cooling"
           },
           {
             "protocol": "Aerodrome V1",
-            "revenue24h": 44010,
+            "revenue24h": 48621,
             "revenue7d": 209630,
-            "share": 8.5,
-            "momentum": 0.47,
+            "share": 9.3,
+            "momentum": 0.624,
             "direction": "heating"
           },
           {
             "protocol": "SoSoValue Indexes",
             "revenue24h": 37790,
             "revenue7d": 274996,
-            "share": 7.3,
+            "share": 7.2,
             "momentum": -0.038,
             "direction": "flat"
           },
@@ -606,7 +571,7 @@
             "protocol": "Uniswap V3",
             "revenue24h": 33468,
             "revenue7d": 410719,
-            "share": 6.5,
+            "share": 6.4,
             "momentum": -0.43,
             "direction": "cooling"
           }
@@ -614,8 +579,8 @@
         "chainHeat": true,
         "dominantApp": {
           "protocol": "Aerodrome Slipstream",
-          "revenue24h": 171562,
-          "share": 33.2
+          "revenue24h": 175730,
+          "share": 33.6
         },
         "singleAppSpike": false
       },
@@ -623,13 +588,13 @@
         "chain": "ethereum",
         "label": "ETH 主网",
         "dataQuality": "ok",
-        "totalRevenue24h": 1645640,
+        "totalRevenue24h": 1571015,
         "topApps": [
           {
             "protocol": "Sky Lending",
             "revenue24h": 450996,
             "revenue7d": 3142087,
-            "share": 27.4,
+            "share": 28.7,
             "momentum": 0.005,
             "direction": "flat"
           },
@@ -637,40 +602,40 @@
             "protocol": "Maple",
             "revenue24h": 150543,
             "revenue7d": 282701,
-            "share": 9.1,
+            "share": 9.6,
             "momentum": 2.728,
             "direction": "heating"
           },
           {
             "protocol": "Aave V3",
-            "revenue24h": 111321,
+            "revenue24h": 110126,
             "revenue7d": 703788,
-            "share": 6.8,
-            "momentum": 0.107,
+            "share": 7,
+            "momentum": 0.095,
             "direction": "heating"
           },
           {
             "protocol": "Titan Builder",
-            "revenue24h": 84198,
+            "revenue24h": 78760,
             "revenue7d": 1078580,
-            "share": 5.1,
-            "momentum": -0.454,
+            "share": 5,
+            "momentum": -0.489,
             "direction": "cooling"
           },
           {
-            "protocol": "Defi Saver Asset Management",
-            "revenue24h": 78161,
-            "revenue7d": 219232,
-            "share": 4.7,
-            "momentum": 1.496,
-            "direction": "heating"
+            "protocol": "Ethereum",
+            "revenue24h": 77695,
+            "revenue7d": 610804,
+            "share": 4.9,
+            "momentum": -0.11,
+            "direction": "cooling"
           }
         ],
         "chainHeat": true,
         "dominantApp": {
           "protocol": "Sky Lending",
           "revenue24h": 450996,
-          "share": 27.4
+          "share": 28.7
         },
         "singleAppSpike": false
       },
@@ -678,7 +643,7 @@
         "chain": "bsc",
         "label": "BSC",
         "dataQuality": "ok",
-        "totalRevenue24h": 328090,
+        "totalRevenue24h": 329233,
         "topApps": [
           {
             "protocol": "GMGN",
@@ -692,7 +657,7 @@
             "protocol": "PancakeSwap AMM",
             "revenue24h": 37907,
             "revenue7d": 174485,
-            "share": 11.6,
+            "share": 11.5,
             "momentum": 0.521,
             "direction": "heating"
           },
