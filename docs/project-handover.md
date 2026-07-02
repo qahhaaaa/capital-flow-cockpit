@@ -13,7 +13,7 @@
 
 ## 2. 当前状态
 
-- 五层全部实现,本机实跑 **4/5 层有实时数据**(L4 OKX 经代理);测试 **65/65 绿**。
+- 五层全部实现,本机实跑 **4/5 层有实时数据**(L4 OKX 经代理,云端 451 由 Hyperliquid 回退);测试 **104/104 绿**。
 - 旁路辅助:`appRevenueHeat`(各链协议收入热度);页面最上方 `macro-context` 宏观背景三曲线。
 - 交易可用等级上限 `watch_only`(信号增强,仍不自动下单)。
 
@@ -24,7 +24,7 @@
 ```bash
 npm test          # 65 单元测试(纯函数 + 契约 + provider 解析 + 数据校验)
 npm run collect   # 采集一次 → public/data/cockpit.json
-npm run serve     # 启动服务(默认 :4173),启动即采集,之后每 4h 自动采集
+npm run serve     # 启动服务(默认 :4173),启动即采集,之后每 1h 自动采集
 ```
 
 打开 `http://localhost:4173/`;端口占用用 `PORT=4181 npm run serve`。
@@ -59,7 +59,7 @@ public/data/cockpit.json         # 采集生成(不入库)
 | L1 宏观 | 放水/收水 | FRED 净流动性 `WALCL−TGA−RRP`(fredgraph.csv,无 key) | ✅ |
 | L2 链间 | 资金在 SOL/Base/ETH/BSC 间迁移 | `stablecoins.llama.fi/stablecoinchains`(稳定币份额变化) | ✅(桥净流付费,用份额代理) |
 | L3 发射台 | 打新资金在哪个台子升温 | `api.llama.fi/overview/fees`(pump.fun/BONK.fun/believe/moonshot/four.meme 收入+动量+份额) | ✅ |
-| L4 DEX↔CEX | 钱在链上现货还是 CEX 合约 + 拥挤 | OKX 衍生品(funding/perp-spot) | ✅(**经代理**) |
+| L4 DEX↔CEX | 钱在链上现货还是 CEX 合约 + 拥挤 | OKX 衍生品(funding/perp-spot);不可达时回退 Hyperliquid(仅 perp 腿 → partial) | ✅(本机经代理;云端 HL 回退) |
 | L5 主题 | 资金在哪个板块/叙事 | `api.llama.fi/protocols`(板块 TVL 动量)+ CoinGecko trending(mindshare 注意力代理,可操纵,仅展示) | ✅ |
 | 旁路 | 协议收入热度 | `api.llama.fi/overview/fees/{chain}` 各链 top 协议 | ✅(活动热度,**不进引擎/conviction**) |
 | 顶部 | 宏观背景(大科技 capex / AI ARR / 存储价) | **手工维护** `macro-context.json`(无免费实时 API,数据带来源) | ✅(非实时) |
@@ -77,7 +77,7 @@ public/data/cockpit.json         # 采集生成(不入库)
 
 ## 8. 关键 gotcha(已踩过的坑,务必知道)
 
-- **OKX / CoinGecko 直连被墙** → 经本机代理 `127.0.0.1:7897` 访问(`providers/http.mjs` 的 CONNECT 隧道,读 `HTTPS_PROXY` env)。换可达环境/代理失效时 L4 与 mindshare 会 `missing`。
+- **OKX / CoinGecko 直连被墙** → 经本机代理 `127.0.0.1:7897` 访问(`providers/http.mjs` 的 CONNECT 隧道,读 `HTTPS_PROXY` env)。2026-07-03 起 L4 有 **Hyperliquid 免 key 回退**(OKX 失败自动切换,funding 小时率×8 对齐 OKX 8h 口径、无现货腿 → partial);mindshare 仍无回退,代理失效时 `missing`。
 - **FRED**:多序列合并端点返回 **ZIP**,必须分序列拉;单位 **WALCL/WTREGEN(TGA)= 百万、RRPONTSYD = 十亿**,净流动性 = `WALCL/1000 − TGA/1000 − RRP`。
 - **DeFiLlama 前端 403 反爬** → 一律用 API 端点(`api.llama.fi` / `stablecoins.llama.fi`);桥端点 `bridges.llama.fi` 为 **402 付费**。
 - **OKX SWAP 的 `volCcy24h` 是 base 币数量**,USD 量 = `volCcy24h × last`(spot 的已是 USDT)。
@@ -105,7 +105,7 @@ public/data/cockpit.json         # 采集生成(不入库)
 
 ## 11. 部署:GitHub Actions + GitHub Pages(已实施 2026-06-29)
 
-**形态**:GitHub Actions(cron 每 4h 跑 `npm run collect`)+ GitHub Pages(托管静态前端 + 生成的 JSON)。Actions 是定时跑批,**不是常驻服务器**;这条路对应"静态部署 + 外部 cron 生成 JSON"。
+**形态**:GitHub Actions(cron 每 1h 第 17 分跑 `npm run collect`)+ GitHub Pages(托管静态前端 + 生成的 JSON)。Actions 是定时跑批,**不是常驻服务器**;这条路对应"静态部署 + 外部 cron 生成 JSON"。可选 Telegram 状态变化推送(`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` secret,缺省跳过)。
 
 **适配性**:无依赖、无构建、**无 secret**(采集只用免费无 key API:FRED/DeFiLlama/OKX/CoinGecko)→ 天然适合。
 
@@ -113,7 +113,7 @@ public/data/cockpit.json         # 采集生成(不入库)
 - workflow:`schedule` cron 每 4h + `workflow_dispatch` + push;步骤 checkout → setup-node@v4(node 22) → `npm test` → `node scripts/collect-cockpit.mjs` → **commit `public/data/cockpit.json` + `cockpit-history.json` 回仓库** → 部署 `public/` 到 Pages。
 - **历史持久化(关键)**:Actions 每次是临时环境,链间轮动/百分位依赖 `cockpit-history.json`,必须每次 commit 回仓库才能累积 → 需**放行 `.gitignore`**(当前忽略了 `public/data/cockpit*.json`),或改用单独 data 分支存数据。
 - **代理**:云端 runner 在境外,直连可达,**不用本机的 7897 代理**(`getJsonViaProxy` 无 `HTTPS_PROXY` 时自动直连)。
-- **⚠️ OKX 封美国 IP**:GitHub 托管 runner 多在美国/Azure → L4(OKX)可能 451/被拒 → 接受 **L4 标 missing**(其余四层正常),workflow 不应因此失败;要云上补 L4 得用**非美 self-hosted runner**。DeFiLlama/FRED/CoinGecko 不受影响。
+- **⚠️ OKX 封美国 IP**:GitHub 托管 runner 多在美国/Azure → L4(OKX)可能 451/被拒 → **自动回退 Hyperliquid**(免 key、不封美区;仅 perp 腿 → L4 标 partial),两者都失败才 missing,workflow 不因此失败。DeFiLlama/FRED/CoinGecko 不受影响。
 - **GitHub Pages 公开可见**(无密钥泄露风险,但面板公开);前端 `fetch('./data/...')` 为文档相对路径(`index.html` 无 `<base>`,`<script src="./main.js">`),在 Pages 子路径 `user.github.io/<repo>/` 下解析为 `.../<repo>/data/...`,**已确认无需改动**。
 - **前置**:本仓库目前**无 remote**,需先建 GitHub repo → `git remote add origin` → push;Pages 设置里 Source 选 "GitHub Actions"。
 

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-07-03
+
+- **Telegram 状态变化推送**: 采集后对比上一次已提交快照,仅状态变化时推送(regime/钱位/仓位档/轮动边/层质量/潮汐方向);无 secret 静默跳过、发送失败与畸形快照均隔离(CLI 兜底 catch,永不 fail workflow)、token 不落日志、消息 20 行截断。类型: 新增。文件: `scripts/notify-telegram.mjs`, `tests/notify-telegram.test.mjs`, `.github/workflows/collect-and-deploy.yml`。
+- **敏锐度包(1h 采集+潮汐+时间锚定+检测器)**: 采集 4h→1h(cron `17 * * * *`),历史上限 720 点≈30 天;链流 delta 改真实时间 4h 锚定(与采集频率解耦,旧纯数字序列路径不变);新增稳定币总量潮汐旁路 `stableTide`(24h/7d 锚定变化+EMA 缺口+CUSUM,不进引擎 v1);`stats.mjs` 新增 `emaGap`/`cusum`/`resampleByTime`;`replay-detectors.mjs` 回放验证(Base 链 313h 内 0 方向翻转但 CUSUM 捕获 4 段慢漂移)。类型: 新增/修改。文件: `src/config.mjs`, `src/cockpit/history.mjs`, `src/cockpit/stats.mjs`, `src/cockpit/layers/chain-flow.mjs`, `src/cockpit/layers/stable-tide.mjs`, `src/cockpit/contract.mjs`, `scripts/collect-cockpit.mjs`, `scripts/replay-detectors.mjs`, `public/main.js`, 相应测试。
+- **L4 Hyperliquid 云端回退**: OKX 451(美区 runner)时自动回退 Hyperliquid 公共 API(免 key;funding 小时率×8 对齐 OKX 8h 口径,OI×markPx,无现货腿→层标 partial 不造 ratio);两者都失败才 missing。类型: 新增/修改。文件: `src/cockpit/providers/hyperliquid.mjs`, `scripts/collect-cockpit.mjs`, `src/cockpit/layers/dexcex.mjs`, `tests/cockpit-provider-hyperliquid.test.mjs`, `tests/cockpit-dexcex.test.mjs`。
+- **审查修复(ha-reviewer 6 项采纳)**: 三处 `Number(null)=0` 陷阱(hyperliquid num / buildHistoryEntry totalUsd / resampleByTime+anchoredDeltas 前置拒绝);CUSUM 加 `stepsSinceAlarm` 时效闩锁(>24h 旧警报不再当"当前拐点")+ z 值 ±4 winsorize(停采缺口压缩不再单步假警报);dexCex 无现货腿时 quality 如实 partial;潮汐 ok 门槛提高到 24h+7d 锚点双达;notify 畸形形状硬化。遗留(P1 记录): 重采样网格纪元对齐、缺口分段 CUSUM、strength 分位样本自相关说明。类型: 修复。文件: 同上各模块。
+
 ## 2026-06-29
 
 - **GitHub Actions 定时采集 + Pages 托管**: 新增 `collect-and-deploy.yml`,schedule(cron 每 4h)+ workflow_dispatch + push 触发;步骤 checkout → setup-node@v4(node 22)→ `npm test` 门禁 → `node scripts/collect-cockpit.mjs` 直连采集 → 把 `cockpit.json`/`cockpit-history.json` commit 回 main 累积滚动历史 → upload-pages-artifact + deploy-pages 部署 `public/`。零 secret / 零代理 / 零新依赖(仅官方 actions);OKX 在美区 runner 多半 451,靠现有失败隔离标 L4 `missing` 且 workflow 不失败(已本地注入 loadDexCex 抛错验证 collectCockpit 仍 resolve、CLI exit 0)。防自我触发:push.paths-ignore 忽略两数据文件 + 提交信息 `[skip ci]` + 默认 GITHUB_TOKEN 推送不再触发新 run。`.gitignore` 放行 `public/data/cockpit*.json`。前端 `./data/...` 为文档相对路径(无 `<base>`),在 Pages 子路径下解析正确,无需改动。类型: 新增/修改。文件: `.github/workflows/collect-and-deploy.yml`, `.gitignore`, `docs/project-handover.md`。
