@@ -92,7 +92,15 @@ jobs:
             echo "No data changes to commit."
           else
             git commit -m "chore(data): refresh cockpit snapshot + rolling history [skip ci]"
-            git push
+            # 竞态防护:重跑(re-run)时上一 attempt 可能已把数据 commit 进 main,基于触发时
+            # SHA 的 push 会非快进被拒。rebase -X theirs 让本次(更新)的采集数据获胜;仍失败
+            # 则警告并放行——丢一个数据点(下一小时补上)远好于让部署整体失败。
+            if ! git pull --rebase -X theirs origin main; then
+              git rebase --abort || true
+              echo "::warning::data commit skipped (concurrent run advanced main)"
+              exit 0
+            fi
+            git push || echo "::warning::data push failed, skipped (next hourly run re-appends)"
           fi
 
       - name: Configure Pages
