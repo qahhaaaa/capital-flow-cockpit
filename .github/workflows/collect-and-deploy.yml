@@ -1,7 +1,10 @@
 # 定时采集 cockpit/v2 资金流数据 + 部署静态面板到 GitHub Pages。
 # 设计要点 / 约束详见 docs/project-handover.md 第 11 节。
 #
-# - 零 secret：采集只用免费无 key API（FRED / DeFiLlama / OKX / CoinGecko），无需任何 repo secret。
+# - 采集零 secret：只用免费无 key API（FRED / DeFiLlama / OKX / CoinGecko）。
+#   Telegram 推送为可选增强：配置 TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID 两个 repo secret 后启用；
+#   未配置时推送步骤静默跳过（exit 0），不影响采集与部署。仅状态变化时才发消息（对比上一次
+#   已提交的 cockpit.json），避免定时刷屏。
 # - 零代理：云端 runner 直连可达；src/cockpit/providers/http.mjs 的 getJsonViaProxy 在没有
 #   HTTPS_PROXY 时自动走直连，因此这里不设置任何代理 env。
 # - OKX 封美国 IP：GitHub 托管 runner 多在美国/Azure → L4(OKX 衍生品) 可能 451 / 被拒。
@@ -65,6 +68,17 @@ jobs:
       # 直连采集（无代理 env）。单源失败被脚本隔离，整体仍 exit 0；L4/OKX 在美区 runner 多半 missing。
       - name: Collect cockpit snapshot
         run: node scripts/collect-cockpit.mjs
+
+      # 状态变化推送（可选）：HEAD 里的 cockpit.json 是上一次 run 提交的状态（本 run 的 commit 在后面），
+      # 用它与刚采集的新快照做 diff。脚本自带失败隔离：无 secret 跳过 / 发送失败仅告警，永不 fail 本 job。
+      - name: Snapshot previous cockpit state (for change detection)
+        run: git show HEAD:public/data/cockpit.json > /tmp/prev-cockpit.json 2>/dev/null || echo "no previous committed snapshot"
+
+      - name: Telegram notify on state change (skips when secrets absent)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node scripts/notify-telegram.mjs /tmp/prev-cockpit.json public/data/cockpit.json
 
       # 把刷新后的数据文件回写 main，让 cockpit-history.json 跨 run 累积。
       # 仅在确有变化时提交；[skip ci] + 上面的 paths-ignore 共同防止自我触发。
