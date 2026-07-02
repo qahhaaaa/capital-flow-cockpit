@@ -21,6 +21,7 @@ import { loadFredNetLiquiditySnapshot } from "../src/cockpit/providers/macro.mjs
 import { loadCategoriesSnapshot } from "../src/cockpit/providers/narrative.mjs";
 import { loadMindshareSnapshot } from "../src/cockpit/providers/mindshare.mjs";
 import { loadOkxDerivativesSnapshot } from "../src/cockpit/providers/dexcex.mjs";
+import { loadHyperliquidDerivativesSnapshot } from "../src/cockpit/providers/hyperliquid.mjs";
 
 const outputPath = resolve("public/data/cockpit.json");
 const historyPath = resolve("public/data/cockpit-history.json");
@@ -48,6 +49,7 @@ export async function collectCockpit({
   loadNarrative = loadCategoriesSnapshot,
   loadMindshare = loadMindshareSnapshot,
   loadDexCex = loadOkxDerivativesSnapshot,
+  loadDexCexFallback = loadHyperliquidDerivativesSnapshot,
   watchlist = DEFAULT_WATCHLIST,
   now = new Date().toISOString(),
 } = {}) {
@@ -123,13 +125,23 @@ export async function collectCockpit({
     sourceStatus.push({ source: "defillama-categories", status: "error", message: error.message });
   }
 
+  // L4 primary/backup chain: OKX first (richer: real spot leg -> perp/spot ratio), then
+  // Hyperliquid (key-free, not US-blocked -> works on GitHub-hosted runners where OKX 451s;
+  // no spot leg -> layer degrades to partial, never fabricated). Both failing -> missing.
   try {
     const dexCex = await loadDexCex();
     layerSignals.dexCex = computeDexCexSignal(dexCex);
     sourceStatus.push({ source: "okx-derivatives", status: "ok" });
   } catch (error) {
-    layerSignals.dexCex = computeDexCexSignal({ assets: [] });
     sourceStatus.push({ source: "okx-derivatives", status: "error", message: error.message });
+    try {
+      const fallback = await loadDexCexFallback();
+      layerSignals.dexCex = computeDexCexSignal(fallback);
+      sourceStatus.push({ source: "hyperliquid-derivatives", status: "ok" });
+    } catch (fallbackError) {
+      layerSignals.dexCex = computeDexCexSignal({ assets: [] });
+      sourceStatus.push({ source: "hyperliquid-derivatives", status: "error", message: fallbackError.message });
+    }
   }
 
   const cockpit = assembleCockpit({
@@ -147,7 +159,9 @@ export async function collectCockpit({
   return { cockpit, outputPath };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// argv[1] guard: importing this module from `node -e` / REPL leaves argv[1] undefined,
+// and pathToFileURL(undefined) throws — an import side-effect crash, not a CLI run.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   collectCockpit()
     .then(({ outputPath: path }) => console.log(`Wrote ${path}`))
     .catch((error) => {

@@ -16,6 +16,9 @@ const FLAT_EPS_PP = 0.02;
 const ANCHOR_MS = 4 * 60 * 60 * 1000;
 const OK_MIN_DELTAS = 8;
 const OK_MIN_SPAN_MS = 24 * 60 * 60 * 1000;
+// An inflection alarm is only CURRENT within this many resample steps (6 × 4h = 24h);
+// older alarms are history, not "an inflection now" — suppressed instead of latched forever.
+const INFLECTION_FRESH_STEPS = 6;
 
 function peggedUsd(row) {
   const value = Number(row?.totalCirculatingUSD?.peggedUSD);
@@ -59,6 +62,8 @@ function consecutiveDiffs(series) {
 // detector replay script so analysis runs the exact production math.
 export function anchoredDeltas(sharePoints, { anchorMs = ANCHOR_MS } = {}) {
   const pts = (sharePoints ?? [])
+    // reject missing BEFORE Number(): Number(null) === 0 would smuggle a fake zero share
+    .filter((point) => point && point.share !== null && point.share !== undefined && point.share !== "")
     .map((point) => ({ t: Date.parse(point.ts), share: Number(point.share) }))
     .filter((point) => Number.isFinite(point.t) && Number.isFinite(point.share))
     .sort((a, b) => a.t - b.t);
@@ -96,6 +101,7 @@ function componentFromSharePoints(chain, sharePoints) {
   const latestDelta = deltas.at(-1);
   const spanMs = pts.at(-1).t - pts[0].t;
   const resampled = resampleByTime(sharePoints, { stepMs: ANCHOR_MS, value: (p) => p.share, ts: (p) => p.ts });
+  const drift = cusum(resampled);
   return {
     chain: chain.id,
     label: chain.label,
@@ -103,7 +109,7 @@ function componentFromSharePoints(chain, sharePoints) {
     shareDeltaPp: round(latestDelta, 4),
     direction: latestDelta > FLAT_EPS_PP ? "inflow" : latestDelta < -FLAT_EPS_PP ? "outflow" : "flat",
     strength: percentileRank(Math.abs(latestDelta), deltas.map(Math.abs)),
-    inflection: cusum(resampled).alarm,
+    inflection: drift.alarm !== null && drift.stepsSinceAlarm <= INFLECTION_FRESH_STEPS ? drift.alarm : null,
     dataQuality: deltas.length >= OK_MIN_DELTAS && spanMs >= OK_MIN_SPAN_MS ? "ok" : "partial",
   };
 }

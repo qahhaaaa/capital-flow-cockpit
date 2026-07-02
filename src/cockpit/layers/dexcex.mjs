@@ -8,7 +8,10 @@ import { clamp, round } from "../../math.mjs";
 
 const FUNDING_HOT = 0.0005; // |funding| at/above this (per interval) = crowded (heuristic, v1)
 
+// Strict: null/undefined/"" are MISSING, not 0 — Number(null) === 0 would smuggle a fake
+// zero into volumes/funding (same guard as stats.mjs cleanWindow).
 const num = (value) => {
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };
@@ -64,6 +67,8 @@ export function computeDexCexSignal({ assets } = {}) {
     drivers: [
       direction === "to_perp" ? `资金偏合约${crowding === "high" ? "(拥挤)" : ""}` : direction === "to_spot" ? "资金偏现货" : "现货/合约均衡",
     ],
-    dataQuality: list.length ? "ok" : "missing",
+    // No spot leg (e.g. the Hyperliquid fallback carries perps only) -> the perp/spot view
+    // is genuinely absent -> partial, not ok. Never overclaim what the source can't see.
+    dataQuality: list.length ? (perpSpotRatio === null ? "partial" : "ok") : "missing",
   };
 }

@@ -29,3 +29,15 @@ test("no derivatives data => missing, never a fabricated direction", () => {
   assert.equal(signal.direction, "balanced");
   assert.equal(signal.dataQuality, "missing");
 });
+
+test("perp-only source (Hyperliquid fallback) => partial, the absent spot view is not overclaimed", () => {
+  const signal = computeDexCexSignal({
+    assets: [
+      { symbol: "BTC", spotVol24hUsd: null, perpVol24hUsd: 3e9, funding: 0.0001 },
+      { symbol: "ETH", spotVol24hUsd: null, perpVol24hUsd: 1e9, funding: 0.0001 },
+    ],
+  });
+  assert.equal(signal.direction, "to_perp"); // funding view still real
+  assert.equal(signal.perpSpotRatio, null); // no spot leg -> no ratio
+  assert.equal(signal.dataQuality, "partial");
+});

@@ -48,5 +48,36 @@ test("cusum alarms on a persistent drift whose every step is small", () => {
 
 test("cusum stays silent on constant series and insufficient data", () => {
   assert.equal(cusum(Array(30).fill(7)).alarm, null); // zero variance -> no fake alarm
-  assert.deepEqual(cusum([1, 2, 3]), { alarm: null, sPos: null, sNeg: null }); // < minDiffs
+  assert.deepEqual(cusum([1, 2, 3]), { alarm: null, sPos: null, sNeg: null, stepsSinceAlarm: null });
+});
+
+test("cusum winsorises a lone outlier step (gap-compression artifact) instead of alarming", () => {
+  // gentle noise, then ONE huge jump (a stalled collector forward-filled, days compressed
+  // into one slot), then gentle noise again: persistent-drift detector must stay quiet.
+  const values = [];
+  for (let i = 0; i < 15; i += 1) values.push(100 + (i % 2 ? 0.01 : -0.01));
+  values.push(110); // single compressed jump
+  for (let i = 0; i < 15; i += 1) values.push(110 + (i % 2 ? 0.01 : -0.01));
+  assert.equal(cusum(values).alarm, null);
+});
+
+test("cusum reports alarm staleness so callers can drop weeks-old 'inflections'", () => {
+  const drift = [...Array(10).fill(5)];
+  for (let i = 1; i <= 10; i += 1) drift.push(5 + i * 0.1);
+  const fresh = cusum(drift);
+  assert.equal(fresh.alarm, "up");
+  assert.ok(fresh.stepsSinceAlarm <= 3); // fired near the tail
+  const stale = cusum([...drift, ...Array(150).fill(6)]); // ~25 days of flat afterwards
+  assert.equal(stale.alarm, "up"); // raw detector still remembers...
+  assert.ok(stale.stepsSinceAlarm >= 140); // ...but staleness exposes it as history
+});
+
+test("resampleByTime rejects null/empty values instead of coercing them to 0", () => {
+  const points = [
+    { ts: "2026-07-01T00:00:00.000Z", v: 100 },
+    { ts: "2026-07-01T04:00:00.000Z", v: null },
+    { ts: "2026-07-01T08:00:00.000Z", v: 110 },
+  ];
+  // null point dropped -> its slot forward-fills the last REAL value, never a fake 0
+  assert.deepEqual(resampleByTime(points, { stepMs: 4 * 3600e3 }), [100, 100, 110]);
 });

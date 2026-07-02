@@ -12,8 +12,10 @@ export function buildHistoryEntry({ ts, perChain, totalUsd }) {
   for (const component of perChain ?? []) {
     chainShares[component.chain] = component.share ?? null;
   }
-  const total = Number(totalUsd);
-  return { ts, chainShares, totalUsd: Number.isFinite(total) ? total : null };
+  // Strict typeof, no Number() coercion: Number(null) === 0 would PERSIST a fake 0 into the
+  // history file whenever the provider degrades to totalUsd: null.
+  const total = typeof totalUsd === "number" && Number.isFinite(totalUsd) ? totalUsd : null;
+  return { ts, chainShares, totalUsd: total };
 }
 
 export function appendCockpitHistory(history, entry, { max = MAX_POINTS } = {}) {

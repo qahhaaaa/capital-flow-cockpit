@@ -64,6 +64,7 @@ export function computeStableTideSignal(tidePoints) {
   const delta7dPct = anchoredPct(pts, 7 * DAY_MS);
   const resampled = resampleByTime(tidePoints, { stepMs: STEP_MS, value: (p) => p.totalUsd, ts: (p) => p.ts });
   const gap = emaGap(resampled, { fastN: 6, slowN: 42 }); // ≈24h vs ≈7d on the 4h grid
+  const drift = cusum(resampled);
 
   const direction =
     delta24hPct === null
@@ -76,7 +77,10 @@ export function computeStableTideSignal(tidePoints) {
     delta24hPct,
     delta7dPct,
     emaGapPct: gap.gapPct,
-    cusumAlarm: cusum(resampled).alarm,
-    dataQuality: delta24hPct !== null && resampled.length >= 8 ? "ok" : "partial",
+    // stale alarms are history, not a current turn: only surface within 6 steps (~24h)
+    cusumAlarm: drift.alarm !== null && drift.stepsSinceAlarm <= 6 ? drift.alarm : null,
+    // "ok" only once the full detector set is live (24h AND 7d anchors both reachable);
+    // a 2-day-old series with null 7d/EMA/CUSUM fields stays an honest partial.
+    dataQuality: delta24hPct !== null && delta7dPct !== null && resampled.length >= 8 ? "ok" : "partial",
   };
 }

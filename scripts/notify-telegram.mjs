@@ -39,9 +39,12 @@ export function diffCockpitState(prev, next) {
     lines.push(`钱主要在: ${prev.moneyLocation ?? "—"} → ${next.moneyLocation ?? "—"}`);
   }
 
-  // Position tiers per watchlist target.
-  const prevRows = new Map((prev.guidance ?? []).map((row) => [row.target, row]));
-  for (const row of next.guidance ?? []) {
+  // Position tiers per watchlist target. Array.isArray (not ?? []) throughout: a snapshot
+  // from an older/newer schema may carry these keys with a non-array shape, and a diff
+  // crash here would sink the whole collection run (this step runs before the data commit).
+  const rows = (value) => (Array.isArray(value) ? value : []);
+  const prevRows = new Map(rows(prev.guidance).map((row) => [row.target, row]));
+  for (const row of rows(next.guidance)) {
     const before = prevRows.get(row.target);
     if (!before) {
       lines.push(`新增标的 ${row.target}: ${tierText(row)}`);
@@ -53,14 +56,14 @@ export function diffCockpitState(prev, next) {
   for (const gone of prevRows.keys()) lines.push(`标的移除: ${gone}`);
 
   // Rotation edges appear/disappear.
-  const prevEdges = new Set((prev.flowState?.rotationEdges ?? []).map(edgeKey));
-  const nextEdges = new Set((next.flowState?.rotationEdges ?? []).map(edgeKey));
+  const prevEdges = new Set(rows(prev.flowState?.rotationEdges).map(edgeKey));
+  const nextEdges = new Set(rows(next.flowState?.rotationEdges).map(edgeKey));
   for (const key of nextEdges) if (!prevEdges.has(key)) lines.push(`轮动边出现: ${key}`);
   for (const key of prevEdges) if (!nextEdges.has(key)) lines.push(`轮动边消失: ${key}`);
 
   // Layer data-quality transitions (source health degradation/recovery).
-  const prevQ = new Map((prev.dataHealth?.layers ?? []).map((l) => [l.layer, l.dataQuality]));
-  for (const layer of next.dataHealth?.layers ?? []) {
+  const prevQ = new Map(rows(prev.dataHealth?.layers).map((l) => [l.layer, l.dataQuality]));
+  for (const layer of rows(next.dataHealth?.layers)) {
     const before = prevQ.get(layer.layer);
     if (before !== undefined && before !== layer.dataQuality) {
       lines.push(`数据质量 ${layer.layer}: ${QUALITY_LABEL[before] ?? before} → ${QUALITY_LABEL[layer.dataQuality] ?? layer.dataQuality}`);
@@ -77,9 +80,15 @@ export function diffCockpitState(prev, next) {
   return lines;
 }
 
+// Telegram hard-caps messages at 4096 chars; keep well under it so an unusually wide diff
+// (e.g. first run after a schema change) cannot 400 the send.
+const MAX_LINES = 20;
+
 // Pure: change lines + snapshot -> Telegram HTML message (dynamic parts escaped).
 export function buildTelegramMessage(diffs, next, pagesUrl = DEFAULT_PAGES_URL) {
-  const body = diffs.map((line) => `• ${esc(line)}`).join("\n");
+  const shown = diffs.slice(0, MAX_LINES);
+  if (diffs.length > shown.length) shown.push(`……以及另外 ${diffs.length - shown.length} 项变化(见面板)`);
+  const body = shown.map((line) => `• ${esc(line)}`).join("\n");
   const regime = REGIME_LABEL[next?.regime ?? "unknown"] ?? next?.regime ?? "—";
   const ts = next?.meta?.generatedAt ?? "—";
   return [
@@ -149,13 +158,17 @@ export async function notifyTelegram({
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [prevPath, nextPath] = process.argv.slice(2);
   if (!nextPath) {
     console.error("usage: node scripts/notify-telegram.mjs <prev-cockpit.json> <next-cockpit.json>");
     process.exitCode = 1;
   } else {
-    // Never fail the workflow: all outcomes (skip/no-change/send-failure) resolve with exit 0.
-    await notifyTelegram({ prevPath, nextPath });
+    // Never fail the workflow: skip/no-change/send-failure resolve normally, and even an
+    // unexpected throw (e.g. a snapshot shape this diff never anticipated) only warns —
+    // this step runs BEFORE the data commit, so a crash here would sink the whole run.
+    await notifyTelegram({ prevPath, nextPath }).catch((error) => {
+      console.warn(`telegram: unexpected error, skipped: ${error.message}`);
+    });
   }
 }

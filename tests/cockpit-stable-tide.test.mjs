@@ -15,15 +15,24 @@ test("tide: no points -> missing, single point -> partial with mcap shown", () =
   assert.equal(single.mcapUsd, 300 * B);
 });
 
-test("tide: sustained mint -> inflow with ok quality once 24h coverage exists", () => {
+test("tide: 24h coverage gives direction but stays partial until the 7d detectors go live", () => {
   // 4h cadence, +0.3B per step (~0.1%) over 32h
   const points = Array.from({ length: 9 }, (_, i) => ({ ts: ts(i * 4), totalUsd: 300 * B + i * 0.3 * B }));
   const tide = computeStableTideSignal(points);
   assert.equal(tide.direction, "inflow");
   assert.ok(tide.delta24hPct > 0.05);
   assert.equal(tide.delta7dPct, null); // series does not reach back 7d — never extrapolated
-  assert.equal(tide.dataQuality, "ok");
+  assert.equal(tide.dataQuality, "partial"); // 7d/EMA/CUSUM fields still null -> honest partial
   assert.equal(tide.points, 9);
+});
+
+test("tide: ok quality once both 24h and 7d anchors are reachable", () => {
+  // 4h cadence over 8 days (49 points)
+  const points = Array.from({ length: 49 }, (_, i) => ({ ts: ts(i * 4), totalUsd: 300 * B + i * 0.1 * B }));
+  const tide = computeStableTideSignal(points);
+  assert.equal(tide.direction, "inflow");
+  assert.ok(tide.delta7dPct > 0);
+  assert.equal(tide.dataQuality, "ok");
 });
 
 test("tide: burn -> outflow; drift inside the deadband -> flat", () => {

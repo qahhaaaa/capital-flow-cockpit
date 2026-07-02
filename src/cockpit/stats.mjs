@@ -58,7 +58,10 @@ export function zScore(value, window) {
 export function resampleByTime(points, { stepMs, value = (p) => p.v, ts = (p) => p.ts } = {}) {
   if (!Number.isFinite(stepMs) || stepMs <= 0) return [];
   const parsed = (points ?? [])
-    .map((point) => ({ t: Date.parse(ts(point)), v: Number(value(point)) }))
+    .map((point) => ({ t: Date.parse(ts(point)), raw: value(point) }))
+    // reject missing BEFORE Number(): Number(null) === 0 would forward-fill a fake zero
+    .filter((point) => point.raw !== null && point.raw !== undefined && point.raw !== "")
+    .map((point) => ({ t: point.t, v: Number(point.raw) }))
     .filter((point) => Number.isFinite(point.t) && Number.isFinite(point.v))
     .sort((a, b) => a.t - b.t);
   if (parsed.length === 0) return [];
@@ -94,21 +97,32 @@ export function emaGap(window, { fastN = 6, slowN = 42 } = {}) {
 // allowance and alarms when the cumulative sum crosses `h` sigma. Catches slow persistent
 // shifts that per-step deadbands (each step individually "flat") never trip. Needs >= minDiffs
 // steps to estimate sigma honestly; degenerate/zero-variance windows return no alarm.
-export function cusum(window, { k = 0.5, h = 4, minDiffs = 8 } = {}) {
+// Per-step z is winsorised at ±zCap so ONE outlier step (e.g. a collection gap forward-filled
+// by resampleByTime compressing days of movement into a single slot) cannot fire the alarm
+// alone — CUSUM is for persistent drift, and (zCap − k) < h by construction keeps a lone
+// capped step below the threshold. `stepsSinceAlarm` counts steps after the LAST alarm so
+// callers can ignore stale alarms instead of presenting a weeks-old event as a current turn.
+export function cusum(window, { k = 0.5, h = 4, minDiffs = 8, zCap = 4 } = {}) {
   const clean = cleanWindow(window);
   const diffs = clean.slice(1).map((item, index) => item - clean[index]);
-  if (diffs.length < minDiffs) return { alarm: null, sPos: null, sNeg: null };
+  if (diffs.length < minDiffs) return { alarm: null, sPos: null, sNeg: null, stepsSinceAlarm: null };
   const sigma = stdDev(diffs);
-  if (!sigma) return { alarm: null, sPos: 0, sNeg: 0 };
+  if (!sigma) return { alarm: null, sPos: 0, sNeg: 0, stepsSinceAlarm: null };
   let sPos = 0;
   let sNeg = 0;
   let alarm = null;
-  for (const diff of diffs) {
-    const z = diff / sigma;
+  let lastAlarmIndex = null;
+  diffs.forEach((diff, index) => {
+    const z = Math.max(-zCap, Math.min(zCap, diff / sigma));
     sPos = Math.max(0, sPos + z - k);
     sNeg = Math.max(0, sNeg - z - k);
-    if (sPos > h) { alarm = "up"; sPos = 0; }
-    else if (sNeg > h) { alarm = "down"; sNeg = 0; }
-  }
-  return { alarm, sPos: round(sPos, 2), sNeg: round(sNeg, 2) };
+    if (sPos > h) { alarm = "up"; lastAlarmIndex = index; sPos = 0; }
+    else if (sNeg > h) { alarm = "down"; lastAlarmIndex = index; sNeg = 0; }
+  });
+  return {
+    alarm,
+    sPos: round(sPos, 2),
+    sNeg: round(sNeg, 2),
+    stepsSinceAlarm: lastAlarmIndex === null ? null : diffs.length - 1 - lastAlarmIndex,
+  };
 }

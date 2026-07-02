@@ -54,6 +54,20 @@ test("buildTelegramMessage escapes HTML in dynamic content and links the panel",
   assert.ok(msg.includes("2026-07-03T00:00:00.000Z"));
 });
 
+test("buildTelegramMessage truncates unusually wide diffs below Telegram's message cap", () => {
+  const diffs = Array.from({ length: 30 }, (_, i) => `变化 ${i + 1}`);
+  const msg = buildTelegramMessage(diffs, snapshot());
+  assert.ok(msg.includes("变化 20"));
+  assert.ok(!msg.includes("变化 21"));
+  assert.ok(msg.includes("另外 10 项变化"));
+});
+
+test("diffCockpitState tolerates malformed snapshot shapes instead of throwing", () => {
+  const broken = snapshot({ guidance: { not: "an-array" }, flowState: { rotationEdges: "junk" }, dataHealth: {} });
+  assert.doesNotThrow(() => diffCockpitState(broken, snapshot()));
+  assert.doesNotThrow(() => diffCockpitState(snapshot(), broken));
+});
+
 test("notifyTelegram skips silently without secrets and never touches the network", async () => {
   let fetched = 0;
   const result = await notifyTelegram({
