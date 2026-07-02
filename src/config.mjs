@@ -68,7 +68,10 @@ export const DEPLOYMENT = {
   alternatives: ["vercel-static", "vps-cron"],
 };
 
+// 1h cadence (was 4h): faster L2/tide direction latency. Layer semantics stay
+// cadence-independent because chain-flow deltas are TIME-anchored (see chain-flow.mjs)
+// and detector windows are time-resampled (see stats.mjs resampleByTime).
 export const REFRESH = {
-  intervalHours: 4,
-  clientPollMs: 4 * 60 * 60 * 1000,
+  intervalHours: 1,
+  clientPollMs: 60 * 60 * 1000,
 };

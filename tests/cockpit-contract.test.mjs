@@ -41,3 +41,9 @@ test("assembleCockpit degrades safely with no signals", () => {
   assert.equal(out.regime, "unknown");
   assert.deepEqual(out.guidance, []);
 });
+
+test("assembleCockpit carries the stableTide side-channel through, defaulting to null", () => {
+  const out = assembleCockpit({ layerSignals, stableTide: { direction: "inflow", dataQuality: "ok" } });
+  assert.equal(out.stableTide.direction, "inflow");
+  assert.equal(assembleCockpit({ layerSignals }).stableTide, null);
+});

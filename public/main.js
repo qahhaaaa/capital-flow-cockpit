@@ -171,6 +171,22 @@ function render(d) {
   ].join("");
 }
 
+const pctSigned = (v) => (v === null || v === undefined ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`);
+
+// 稳定币总量潮汐(旁路):总量=钱进出 crypto 的池子变化;份额=池内轮动。不进五层引擎。
+function tideLine(d) {
+  const t = d.stableTide;
+  if (!t) return "";
+  const alarm = t.cusumAlarm
+    ? ` · <span class="${t.cusumAlarm === "up" ? "up" : "down"}">CUSUM 拐点警报:${t.cusumAlarm === "up" ? "转流入" : "转流出"}</span>`
+    : "";
+  return `<div class="muted" style="margin-top:8px">稳定币总量:<strong>${usd(t.mcapUsd)}</strong>
+    · 24h <span class="${dirClass(t.direction)}">${pctSigned(t.delta24hPct)}</span>
+    · 7d ${pctSigned(t.delta7dPct)}
+    · 潮汐 <span class="${dirClass(t.direction)}">${esc(DIR_LABEL[t.direction] ?? t.direction)}</span>${alarm}
+    · ${qBadge(t.dataQuality)}</div>`;
+}
+
 function headerPanel(d) {
   const r = d.regime ?? "unknown";
   return `<div class="panel">
@@ -179,6 +195,7 @@ function headerPanel(d) {
       <span class="muted">钱主要在:</span><strong>${esc(d.moneyLocation ?? "—")}</strong>
       <span class="muted">一致度:</span><span>${esc(d.flowState?.agreement?.net ?? "—")}</span>
     </div>
+    ${tideLine(d)}
     <div class="advisory">${esc(d.advisory ?? "辅助判断,不构成下单指令。")}</div>
   </div>`;
 }

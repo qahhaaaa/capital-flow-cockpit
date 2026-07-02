@@ -21,8 +21,9 @@ name: collect-and-deploy
 
 on:
   schedule:
-    # 每 4 小时（UTC：00/04/08/12/16/20 点）。GitHub 定时为 best-effort，高峰期可能延迟数分钟。
-    - cron: "0 */4 * * *"
+    # 每小时第 17 分（避开整点的 GitHub 定时高峰,减少排队延迟）。GitHub 定时为 best-effort。
+    # 1h 采集下滚动历史上限 720 点 ≈ 30 天;链流 delta 已按真实时间锚定,不受采集频率影响。
+    - cron: "17 * * * *"
   workflow_dispatch: {} # 手动触发（仓库 Actions 页面 "Run workflow"）
   push:
     branches: [main]

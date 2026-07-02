@@ -5,10 +5,17 @@
 // the (paid/anti-scraped) bridge endpoints. See docs/capital-flow-rotation-survey-2026-06-19.md.
 import { SUPPORTED_CHAINS } from "../../config.mjs";
 import { round, clamp } from "../../math.mjs";
-import { cleanWindow, percentileRank } from "../stats.mjs";
+import { cleanWindow, cusum, percentileRank, resampleByTime } from "../stats.mjs";
 
 // Deadband (percentage points of global share) below which a move is "flat" noise.
 const FLAT_EPS_PP = 0.02;
+
+// Delta anchor window. FLAT_EPS_PP was calibrated against one 4h collection step; with the
+// cadence now 1h, a per-adjacent-point delta would shrink ~4x and drown in that deadband.
+// Anchoring each delta at "share now vs >=4h earlier" keeps the semantics cadence-independent.
+const ANCHOR_MS = 4 * 60 * 60 * 1000;
+const OK_MIN_DELTAS = 8;
+const OK_MIN_SPAN_MS = 24 * 60 * 60 * 1000;
 
 function peggedUsd(row) {
   const value = Number(row?.totalCirculatingUSD?.peggedUSD);
@@ -46,42 +53,103 @@ function consecutiveDiffs(series) {
   return series.slice(1).map((value, index) => value - series[index]);
 }
 
+// Timestamped share points -> deltas anchored by real elapsed time: for each point, the
+// change vs the LATEST point at least ANCHOR_MS earlier. At the old 4h cadence this equals
+// the adjacent-point diff (smooth migration); at 1h it spans ~4 points. Exported for the
+// detector replay script so analysis runs the exact production math.
+export function anchoredDeltas(sharePoints, { anchorMs = ANCHOR_MS } = {}) {
+  const pts = (sharePoints ?? [])
+    .map((point) => ({ t: Date.parse(point.ts), share: Number(point.share) }))
+    .filter((point) => Number.isFinite(point.t) && Number.isFinite(point.share))
+    .sort((a, b) => a.t - b.t);
+  const deltas = [];
+  let anchor = 0;
+  for (let i = 0; i < pts.length; i += 1) {
+    while (anchor + 1 < pts.length && pts[anchor + 1].t <= pts[i].t - anchorMs) anchor += 1;
+    if (pts[anchor].t <= pts[i].t - anchorMs) deltas.push(pts[i].share - pts[anchor].share);
+  }
+  return { pts, deltas };
+}
+
 function edgeConfidence(inflow, outflow) {
   return inflow.dataQuality === "ok" && outflow.dataQuality === "ok" ? "high" : "medium";
 }
 
+// Component from timestamped points (cadence-independent). `inflection` is a display-only
+// CUSUM alarm on the 4h-resampled share series — flags slow persistent drifts whose every
+// single step sits inside the deadband; it does NOT alter direction/strength (v1).
+function componentFromSharePoints(chain, sharePoints) {
+  const { pts, deltas } = anchoredDeltas(sharePoints);
+  if (pts.length === 0) {
+    return {
+      chain: chain.id, label: chain.label, shareNow: null, shareDeltaPp: null,
+      direction: "unknown", strength: null, inflection: null, dataQuality: "missing",
+    };
+  }
+  const shareNow = round(pts.at(-1).share, 4);
+  if (deltas.length === 0) {
+    return {
+      chain: chain.id, label: chain.label, shareNow, shareDeltaPp: null,
+      direction: "unknown", strength: null, inflection: null, dataQuality: "partial",
+    };
+  }
+  const latestDelta = deltas.at(-1);
+  const spanMs = pts.at(-1).t - pts[0].t;
+  const resampled = resampleByTime(sharePoints, { stepMs: ANCHOR_MS, value: (p) => p.share, ts: (p) => p.ts });
+  return {
+    chain: chain.id,
+    label: chain.label,
+    shareNow,
+    shareDeltaPp: round(latestDelta, 4),
+    direction: latestDelta > FLAT_EPS_PP ? "inflow" : latestDelta < -FLAT_EPS_PP ? "outflow" : "flat",
+    strength: percentileRank(Math.abs(latestDelta), deltas.map(Math.abs)),
+    inflection: cusum(resampled).alarm,
+    dataQuality: deltas.length >= OK_MIN_DELTAS && spanMs >= OK_MIN_SPAN_MS ? "ok" : "partial",
+  };
+}
+
+// Legacy component from a plain numeric series (adjacent-point deltas). Kept byte-compatible
+// for callers/tests that carry no timestamps; the collector now passes timestamped points.
+function componentFromPlainSeries(chain, shareSeries) {
+  const series = cleanWindow(shareSeries);
+  if (series.length < 2) {
+    return {
+      chain: chain.id,
+      label: chain.label,
+      shareNow: series.length ? round(series.at(-1), 4) : null,
+      shareDeltaPp: null,
+      direction: "unknown",
+      strength: null,
+      dataQuality: series.length === 0 ? "missing" : "partial",
+    };
+  }
+  const deltas = consecutiveDiffs(series);
+  const latestDelta = deltas.at(-1);
+  const direction =
+    latestDelta > FLAT_EPS_PP ? "inflow" : latestDelta < -FLAT_EPS_PP ? "outflow" : "flat";
+  return {
+    chain: chain.id,
+    label: chain.label,
+    shareNow: round(series.at(-1), 4),
+    shareDeltaPp: round(latestDelta, 4),
+    direction,
+    strength: percentileRank(Math.abs(latestDelta), deltas.map(Math.abs)),
+    dataQuality: series.length >= 8 ? "ok" : "partial",
+  };
+}
+
 // Per-chain share time-series (chronological, oldest→newest) -> chain-flow LayerSignal.
-// The series are assembled by the rolling-history store; this function is pure.
+// Entries may carry `sharePoints` [{ts, share}] (time-anchored path) or a plain numeric
+// `shareSeries` (legacy adjacent-diff path). The series are assembled by the rolling-history
+// store; this function is pure.
 export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAINS } = {}) {
   const byChain = new Map((perChainSeries ?? []).map((entry) => [entry.chain, entry]));
 
   const components = chains.map((chain) => {
     const entry = byChain.get(chain.id);
-    const series = cleanWindow(entry?.shareSeries);
-    if (series.length < 2) {
-      return {
-        chain: chain.id,
-        label: chain.label,
-        shareNow: series.length ? round(series.at(-1), 4) : null,
-        shareDeltaPp: null,
-        direction: "unknown",
-        strength: null,
-        dataQuality: series.length === 0 ? "missing" : "partial",
-      };
-    }
-    const deltas = consecutiveDiffs(series);
-    const latestDelta = deltas.at(-1);
-    const direction =
-      latestDelta > FLAT_EPS_PP ? "inflow" : latestDelta < -FLAT_EPS_PP ? "outflow" : "flat";
-    return {
-      chain: chain.id,
-      label: chain.label,
-      shareNow: round(series.at(-1), 4),
-      shareDeltaPp: round(latestDelta, 4),
-      direction,
-      strength: percentileRank(Math.abs(latestDelta), deltas.map(Math.abs)),
-      dataQuality: series.length >= 8 ? "ok" : "partial",
-    };
+    return Array.isArray(entry?.sharePoints)
+      ? componentFromSharePoints(chain, entry.sharePoints)
+      : componentFromPlainSeries(chain, entry?.shareSeries);
   });
 
   const movers = components.filter((component) => Number.isFinite(component.shareDeltaPp));

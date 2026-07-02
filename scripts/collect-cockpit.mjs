@@ -6,8 +6,9 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { assembleCockpit } from "../src/cockpit/contract.mjs";
-import { appendCockpitHistory, buildHistoryEntry, buildShareSeries } from "../src/cockpit/history.mjs";
+import { appendCockpitHistory, buildHistoryEntry, buildShareSeriesWithTs, buildTideSeries } from "../src/cockpit/history.mjs";
 import { computeChainFlowSignal } from "../src/cockpit/layers/chain-flow.mjs";
+import { computeStableTideSignal } from "../src/cockpit/layers/stable-tide.mjs";
 import { computeAppRevenueSignal } from "../src/cockpit/layers/app-revenue.mjs";
 import { computeLaunchpadSignal } from "../src/cockpit/layers/launchpad.mjs";
 import { computeMacroSignal } from "../src/cockpit/layers/macro.mjs";
@@ -66,13 +67,19 @@ export async function collectCockpit({
 
   try {
     const snapshot = await load();
-    history = appendCockpitHistory(history, buildHistoryEntry({ ts: now, perChain: snapshot.perChain }));
+    history = appendCockpitHistory(
+      history,
+      buildHistoryEntry({ ts: now, perChain: snapshot.perChain, totalUsd: snapshot.totalUsd }),
+    );
     sourceStatus.push({ source: "defillama-stablecoinchains", status: "ok" });
   } catch (error) {
     sourceStatus.push({ source: "defillama-stablecoinchains", status: "error", message: error.message });
   }
 
-  layerSignals.chain = computeChainFlowSignal(buildShareSeries(history));
+  // Time-anchored share series (cadence-independent deltas) + global-total tide side-channel.
+  // Both read from whatever history holds, so a failed fetch this run degrades, never zeroes.
+  layerSignals.chain = computeChainFlowSignal(buildShareSeriesWithTs(history));
+  const stableTide = computeStableTideSignal(buildTideSeries(history));
 
   try {
     const launchpad = await loadLaunchpad();
@@ -131,6 +138,7 @@ export async function collectCockpit({
     meta: { generatedAt: now, historyPoints: history.length },
     sourceStatus,
     appRevenueHeat,
+    stableTide,
   });
 
   await mkdir(dirname(outputPath), { recursive: true });

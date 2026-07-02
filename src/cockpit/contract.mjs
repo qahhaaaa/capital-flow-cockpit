@@ -21,6 +21,7 @@ export function assembleCockpit({
   meta = {},
   sourceStatus = [],
   appRevenueHeat = null,
+  stableTide = null,
 } = {}) {
   const flowState = computeFlowState(layerSignals);
   const guidance = computePositionGuidance(layerSignals, watchlist, { regime: flowState.regime });
@@ -33,7 +34,9 @@ export function assembleCockpit({
     layers: layerSignals,
     flowState,
     guidance,
+    // Side-channels: displayed for context, deliberately outside the five-layer engine.
     appRevenueHeat,
+    stableTide,
     dataHealth: buildDataHealth(layerSignals, sourceStatus),
     advisory: ADVISORY,
   };
