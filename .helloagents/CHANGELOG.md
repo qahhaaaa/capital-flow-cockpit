@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-07-04
+
+- **决策优先 UI 改版(Codex 实现 + Claude 审查)**: 新增顶部「结论卡」(水位/链间/发射台/潮汐+杠杆/行动五行,红绿灯语义,缺失层如实标注)与「可信度栏」(相对更新时间+五层质量点+可展开源状态);每面板加"怎么读"一行;关键数值好坏着色;版面重排(结论→可信→仓位→L3+L2→L4+L5→辅助);宏观三曲线挪页尾 <details> 默认折叠+首次展开才渲染;移动端(≤480px)表格容器内横滚、guidance 隐藏顺风/逆风列、触控≥32px。审查修复 8 处: 潮汐/杠杆独立组合(dexCex missing 不再吞掉潮汐)、水位行不因宏观缺失隐藏 flowState 信息、链间行轮动边按 type=chain 过滤(发射台边误挂)、拐点警报带链名、风险 0 不显示、guidance 表移动端 min-width 特异性、grid 项 min-width:0 防页面撑宽、错误提示脚本名。类型: 修改。文件: `public/index.html`, `public/main.js`。
+
 ## 2026-07-03
 
 - **Telegram 状态变化推送**: 采集后对比上一次已提交快照,仅状态变化时推送(regime/钱位/仓位档/轮动边/层质量/潮汐方向);无 secret 静默跳过、发送失败与畸形快照均隔离(CLI 兜底 catch,永不 fail workflow)、token 不落日志、消息 20 行截断。类型: 新增。文件: `scripts/notify-telegram.mjs`, `tests/notify-telegram.test.mjs`, `.github/workflows/collect-and-deploy.yml`。

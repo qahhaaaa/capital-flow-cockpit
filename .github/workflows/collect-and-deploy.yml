@@ -24,7 +24,12 @@ on:
     # 每小时第 17 分（避开整点的 GitHub 定时高峰,减少排队延迟）。GitHub 定时为 best-effort。
     # 1h 采集下滚动历史上限 720 点 ≈ 30 天;链流 delta 已按真实时间锚定,不受采集频率影响。
     - cron: "17 * * * *"
-  workflow_dispatch: {} # 手动触发（仓库 Actions 页面 "Run workflow"）
+  workflow_dispatch: # 手动触发（仓库 Actions 页面 "Run workflow"）
+    inputs:
+      force_notify:
+        description: "强制发送一条 Telegram 快照(即使无状态变化;需已配置 TG secrets)"
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths-ignore:
@@ -79,6 +84,8 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # 手动 dispatch 勾选 force_notify 时置 1(schedule/push 下 inputs 不存在 → 空 → 不强制)
+          TELEGRAM_FORCE: ${{ (github.event_name == 'workflow_dispatch' && inputs.force_notify) && '1' || '' }}
         run: node scripts/notify-telegram.mjs /tmp/prev-cockpit.json public/data/cockpit.json
 
       # 把刷新后的数据文件回写 main，让 cockpit-history.json 跨 run 累积。

@@ -23,7 +23,10 @@ const usd = (v) => {
   if (a >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
   return `$${n.toFixed(0)}`;
 };
-const qBadge = (q) => `<span class="q q-${esc(q)}">${esc(q ?? "missing")}</span>`;
+const qBadge = (q) => {
+  const value = q ?? "missing";
+  return `<span class="q q-${esc(value)}">${esc(value)}</span>`;
+};
 
 function macroContextPlaceholder() {
   return `<div class="panel macro-context"><h2>宏观背景三曲线图</h2><p class="muted">宏观背景数据加载中...</p></div>`;
@@ -150,74 +153,223 @@ async function main() {
     const res = await fetch("./data/cockpit.json", { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     app.innerHTML = render(await res.json());
-    void hydrateMacroContextPanel();
+    setupMacroContextLazyHydrate();
   } catch (error) {
-    app.innerHTML = `<p class="err">无法加载 ./data/cockpit.json:${esc(error.message)}。请先运行 <code>npm run collect:cockpit</code>。</p>`;
+    app.innerHTML = `<p class="err">无法加载 ./data/cockpit.json:${esc(error.message)}。请先运行 <code>npm run collect</code>。</p>`;
   }
+}
+
+function setupMacroContextLazyHydrate() {
+  const details = document.getElementById("macro-context-details");
+  if (!details) return;
+  let loaded = false;
+  details.addEventListener("toggle", () => {
+    if (!details.open || loaded) return;
+    loaded = true;
+    void hydrateMacroContextPanel();
+  });
 }
 
 function render(d) {
   return [
-    `<div id="macro-context-slot">${macroContextPlaceholder()}</div>`,
-    headerPanel(d),
+    conclusionPanel(d),
+    trustBar(d),
+    guidancePanel(d),
+    `<div class="grid two">${launchpadPanel(d)}${chainPanel(d)}</div>`,
+    `<div class="grid two">${dexcexPanel(d)}${narrativePanel(d)}</div>`,
     macroPanel(d),
-    `<div class="grid two">${chainPanel(d)}${launchpadPanel(d)}</div>`,
-    `<div class="grid two">${narrativePanel(d)}${dexcexPanel(d)}</div>`,
     appRevenuePanel(d),
     rotationPanel(d),
-    guidancePanel(d),
     healthPanel(d),
+    macroContextDetails(),
     `<footer>schema ${esc(d.schema)} · 生成于 ${esc(d.meta?.generatedAt ?? "—")} · 历史点 ${esc(d.meta?.historyPoints ?? 0)}</footer>`,
   ].join("");
 }
 
 const pctSigned = (v) => (v === null || v === undefined ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`);
+const ppSigned = (v, digits = 2) => (v === null || v === undefined ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(digits)}pp`);
+const tableScroll = (table) => `<div class="table-scroll">${table}</div>`;
+const HOW = {
+  macro: "净流动性=美联储资产负债表−TGA−RRP;上行=放水利好风险资产,收水时引擎自动压制所有仓位建议",
+  chain: "份额变化(pp)>0=稳定币资金净迁入该链;拐点=每步都小但方向持续的慢漂移警报;ok 需≥24h 积累",
+  launchpad: "24h 收入=打新热度的真金白银;动量>0=升温;份额=占五台总收入比;龙头=当前打新主战场",
+  dexCex: "funding>0=多头付费=资金挤在合约(过热防挤仓);偏现货=承接型资金更健康;来源 OKX,451 时自动切 Hyperliquid(无现货腿标 partial)",
+  narrative: "板块 7d TVL 相对强弱=叙事资金轮动;热门搜索仅是注意力代理,可被操纵,不入引擎",
+  tide: "稳定币总市值变化=钱进出 crypto 整个池子;与链间份额(池内轮动)独立",
+  appRevenue: "协议收入=活动热度,不是流动性也不是净流入;单协议占比>60% 会标记单点尖刺",
+  guidance: "conviction 由各层方向×强度×置信度加权,宏观收水封顶试探;顺风/逆风=支持/反对该标的的层;每条风险降一档",
+};
 
-// 稳定币总量潮汐(旁路):总量=钱进出 crypto 的池子变化;份额=池内轮动。不进五层引擎。
-function tideLine(d) {
-  const t = d.stableTide;
-  if (!t) return "";
-  const alarm = t.cusumAlarm
-    ? ` · <span class="${t.cusumAlarm === "up" ? "up" : "down"}">CUSUM 拐点警报:${t.cusumAlarm === "up" ? "转流入" : "转流出"}</span>`
-    : "";
-  return `<div class="muted" style="margin-top:8px">稳定币总量:<strong>${usd(t.mcapUsd)}</strong>
-    · 24h <span class="${dirClass(t.direction)}">${pctSigned(t.delta24hPct)}</span>
-    · 7d ${pctSigned(t.delta7dPct)}
-    · 潮汐 <span class="${dirClass(t.direction)}">${esc(DIR_LABEL[t.direction] ?? t.direction)}</span>${alarm}
-    · ${qBadge(t.dataQuality)}</div>`;
+function macroContextDetails() {
+  return `<details id="macro-context-details" class="panel macro-context-shell">
+    <summary>宏观背景三曲线(手工维护·非实时)· 点击展开</summary>
+    <div id="macro-context-slot">${macroContextPlaceholder()}</div>
+  </details>`;
 }
 
-function headerPanel(d) {
-  const r = d.regime ?? "unknown";
-  return `<div class="panel">
-    <div class="regime">
-      <span>宏观水位:</span><span class="badge b-${esc(r)}">${esc(REGIME_LABEL[r] ?? r)}</span>
-      <span class="muted">钱主要在:</span><strong>${esc(d.moneyLocation ?? "—")}</strong>
-      <span class="muted">一致度:</span><span>${esc(d.flowState?.agreement?.net ?? "—")}</span>
-    </div>
-    ${tideLine(d)}
+function layerMissing(layer) {
+  return !layer || layer.dataQuality === "missing";
+}
+
+function conclusionLine(label, body, cls = "") {
+  return `<div class="decision-line ${cls}"><span class="decision-label">${label}</span><div class="decision-body">${body}</div></div>`;
+}
+
+function agreementView(net) {
+  const map = {
+    aligned_up: ["多头共振", "agreement-up"],
+    aligned_down: ["空头共振", "agreement-down"],
+    mixed: ["分歧", "agreement-mixed"],
+  };
+  const [label, cls] = map[net] ?? [net ?? "—", "flat"];
+  return `<span class="agreement ${cls}">${esc(label)}</span>`;
+}
+
+function launchpadHeatLabel(direction) {
+  return direction === "heating" ? "升温中" : direction === "cooling" ? "降温中" : direction === "flat" ? "热度持平" : "热度未知";
+}
+
+function stableTideLabel(direction, points) {
+  const map = { inflow: "新钱进场", outflow: "资金撤出", flat: "总盘持平" };
+  return map[direction] ?? `潮汐数据积累中(${esc(points ?? 0)}点)`;
+}
+
+function tierSummary(guidance) {
+  const order = ["standard", "small", "probe", "flat"];
+  const labels = { standard: "标准仓", small: "小仓", probe: "试探", flat: "空仓" };
+  return order
+    .map((tier) => {
+      const count = guidance.filter((g) => g.tier === tier).length;
+      return count ? `${count} 个${labels[tier]}` : "";
+    })
+    .filter(Boolean)
+    .join(",");
+}
+
+function conclusionPanel(d) {
+  return `<section class="panel conclusion-card">
+    ${waterLine(d)}
+    ${chainConclusionLine(d)}
+    ${launchpadConclusionLine(d)}
+    ${tideLeverageLine(d)}
+    ${actionLine(d)}
     <div class="advisory">${esc(d.advisory ?? "辅助判断,不构成下单指令。")}</div>
-  </div>`;
+  </section>`;
 }
 
-function chainPanel(d) {
-  const comps = d.layers?.chain?.components ?? [];
-  const rows = comps.length
-    ? comps.map((c) => `<tr>
-        <td>${esc(c.label ?? c.chain)}</td>
-        <td class="num">${pct(c.shareNow)}</td>
-        <td class="num ${dirClass(c.direction)}">${c.shareDeltaPp === null || c.shareDeltaPp === undefined ? "—" : (c.shareDeltaPp > 0 ? "+" : "") + Number(c.shareDeltaPp).toFixed(3) + "pp"}</td>
-        <td class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</td>
-        <td>${qBadge(c.dataQuality)}</td>
-      </tr>`).join("")
-    : `<tr><td colspan="5" class="muted">链间层无数据(provider 失败或未采集)。</td></tr>`;
-  return `<div class="panel">
-    <h2>L2 链间资金流动 · 稳定币份额</h2>
-    <table>
-      <thead><tr><th>链</th><th class="num">占全局份额</th><th class="num">变化</th><th>方向</th><th>数据</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>`;
+function waterLine(d) {
+  // regime/moneyLocation/agreement come from flowState (all layers), not macro alone:
+  // macro missing -> regime honestly renders "未知", the rest of the line stays informative.
+  const r = d.regime ?? "unknown";
+  const macroNote = layerMissing(d.layers?.macro) ? ` <span class="muted">(宏观层缺失)</span>` : "";
+  return conclusionLine("水位", `<span class="decision-main"><span class="badge b-${esc(r)}">${esc(REGIME_LABEL[r] ?? r)}</span><span>${esc(d.moneyLocation ?? "—")}</span>${agreementView(d.flowState?.agreement?.net)}${macroNote}</span>`);
+}
+
+function chainConclusionLine(d) {
+  const chain = d.layers?.chain;
+  if (layerMissing(chain)) return conclusionLine("链间", `<span class="muted">链间层数据缺失</span>`, "muted");
+  const comps = chain.components ?? [];
+  const inflow = comps
+    .filter((c) => c.direction === "inflow" && Number.isFinite(Number(c.shareDeltaPp)))
+    .sort((a, b) => Number(b.shareDeltaPp) - Number(a.shareDeltaPp))[0];
+  const allFlat = comps.length > 0 && comps.every((c) => ["flat", "unknown"].includes(c.direction));
+  const inflections = comps
+    .filter((c) => c.inflection === "up" || c.inflection === "down")
+    .map((c) => `${esc(c.label ?? c.chain)}${c.inflection === "up" ? "↑" : "↓"}`);
+  // flowState.rotationEdges aggregates ALL layers (launchpad edges included) — the chain
+  // line must only show chain-type edges or it contradicts its own "无显著迁移" text.
+  const edges = (d.flowState?.rotationEdges ?? chain.rotationEdges ?? []).filter((e) => e?.type === "chain");
+  const edge = edges[0];
+  const main = inflow
+    ? `钱在流入 ${esc(inflow.label ?? inflow.chain)}(<span class="up">${esc(ppSigned(inflow.shareDeltaPp))}</span>)`
+    : allFlat ? "链间无显著迁移" : "链间迁移方向不明";
+  const edgeText = edge ? ` · <span class="edge">轮动:${esc(edge.from)}→${esc(edge.to)}</span>` : "";
+  const warn = inflections.length ? ` · <span class="warn">⚠ 慢漂移拐点:${inflections.join(" ")}</span>` : "";
+  return conclusionLine("链间", `${main}${edgeText}${warn}`);
+}
+
+function launchpadConclusionLine(d) {
+  const lp = d.layers?.launchpad;
+  if (layerMissing(lp)) return conclusionLine("发射台", `<span class="muted">发射台数据缺失</span>`, "muted");
+  const top = lp.topLaunchpad;
+  if (!top) return conclusionLine("发射台", `<span class="muted">发射台数据缺失</span>`, "muted");
+  const comp = (lp.components ?? []).find((c) => c.launchpad === top.launchpad || c.label === top.label);
+  const direction = comp?.direction ?? lp.direction ?? "unknown";
+  return conclusionLine("发射台", `<span class="${dirClass(direction)}">${esc(top.label)} 领跑(份额 ${esc(top.share ?? "—")}%),${esc(launchpadHeatLabel(direction))}</span>`);
+}
+
+function tideLeverageLine(d) {
+  // Tide and dexCex are independent side/layer channels — compose each honestly instead of
+  // letting one channel's "missing" hide the other (OKX+HL can both fail while tide is fine).
+  const tide = d.stableTide;
+  const dexCex = d.layers?.dexCex;
+  const tideText = !tide || tide.dataQuality === "missing"
+    ? `<span class="muted">潮汐数据缺失</span>`
+    : tide.delta24hPct === null || tide.delta24hPct === undefined
+      ? `<span class="muted" title="${esc(HOW.tide)}">${esc(stableTideLabel(tide.direction, tide.points))}</span>`
+      : `<span class="${dirClass(tide.direction)}" title="${esc(HOW.tide)}">${esc(stableTideLabel(tide.direction, tide.points))}</span> · 24h <span class="${dirClass(tide.direction)}">${esc(pctSigned(tide.delta24hPct))}</span>`;
+  const leverage = layerMissing(dexCex)
+    ? ` · <span class="muted">杠杆面(DEX↔CEX)缺失</span>`
+    : dexCex.crowding === "high" ? ` · <span class="down">合约拥挤,防挤仓</span>` : "";
+  return conclusionLine("潮汐+杠杆", `${tideText}${leverage}`);
+}
+
+function actionLine(d) {
+  const guidance = d.guidance ?? [];
+  if (!guidance.length) return conclusionLine("行动", `<span class="muted">标的建议数据缺失</span>`, "muted");
+  const chips = guidance.map((g) => {
+    const risks = (g.riskFlags ?? []).length;
+    const riskBadge = risks ? `<span class="risk-count down">风险 ${esc(risks)}</span>` : "";
+    return `<span><span class="tier tier-${esc(g.tier)}">${esc(g.target)} ${esc(g.tierLabel ?? g.tier)}</span>${riskBadge}</span>`;
+  }).join("");
+  return conclusionLine("行动", `<span class="action-chips">${chips}</span><span>${esc(tierSummary(guidance) || "暂无可执行档位")}</span>`);
+}
+
+function qualityFromData(d, layer) {
+  const found = (d.dataHealth?.layers ?? []).find((item) => item.layer === layer);
+  const layerData = d.layers?.[layer];
+  return {
+    dataQuality: found?.dataQuality ?? layerData?.dataQuality ?? "missing",
+    confidence: found?.confidence ?? layerData?.confidence ?? "unknown",
+  };
+}
+
+function relativeUpdate(generatedAt) {
+  const time = Date.parse(generatedAt ?? "");
+  if (!Number.isFinite(time)) return { text: "更新时间未知", cls: "down", note: "数据时间缺失" };
+  const minutes = Math.max(0, Math.round((Date.now() - time) / 60000));
+  const text = minutes < 1 ? "刚刚" : minutes < 60 ? `${minutes} 分钟前` : `${Math.floor(minutes / 60)} 小时前`;
+  if (minutes > 180) return { text, cls: "down", note: "数据可能滞后" };
+  if (minutes > 90) return { text, cls: "warn", note: "数据可能滞后" };
+  return { text, cls: "up", note: "" };
+}
+
+function trustBar(d) {
+  const updated = relativeUpdate(d.meta?.generatedAt);
+  const layers = [
+    ["macro", "宏观"],
+    ["chain", "链间"],
+    ["launchpad", "发射台"],
+    ["dexCex", "DEX↔CEX"],
+    ["narrative", "主题"],
+  ];
+  const dots = layers.map(([key, label]) => {
+    const q = qualityFromData(d, key);
+    const status = ["ok", "partial", "missing"].includes(q.dataQuality) ? q.dataQuality : "missing";
+    return `<span class="dot dot-${esc(status)}" title="${esc(label)} · ${esc(q.confidence)}"></span>`;
+  }).join("");
+  const sources = (d.dataHealth?.sourceStatus ?? []).map((s) => `<div>${esc(s.source)}:<span class="${s.status === "ok" ? "up" : "down"}">${esc(s.status)}</span>${s.message ? ` <span>(${esc(s.message)})</span>` : ""}</div>`).join("");
+  return `<details class="panel trust-bar">
+    <summary>
+      <span class="${updated.cls}">更新 ${esc(updated.text)}${updated.note ? ` · ${esc(updated.note)}` : ""}</span>
+      <span class="dot-row" aria-label="五层数据质量">${dots}</span>
+      <span class="muted">历史 ${esc(d.meta?.historyPoints ?? 0)} 点</span>
+      <span class="muted">每小时自动采集·失败源如实标注</span>
+    </summary>
+    <div class="trust-details">
+      <div>${sources || "源状态缺失"}</div>
+    </div>
+  </details>`;
 }
 
 const METRIC_LABEL = { netLiquidityUsdB: "净流动性", walclUsdB: "Fed 资产负债表", tgaUsdB: "TGA", rrpUsdB: "RRP" };
@@ -227,13 +379,35 @@ function macroPanel(d) {
   const cells = (m.components ?? []).map((c) => {
     const v = c.value === null || c.value === undefined ? "—" : `$${Number(c.value).toLocaleString()}B`;
     const chg = c.changePct === null || c.changePct === undefined ? ""
-      : ` <span class="${c.changePct > 0 ? "up" : c.changePct < 0 ? "down" : "flat"}">(${c.changePct > 0 ? "+" : ""}${c.changePct}%)</span>`;
-    return `<span class="muted">${esc(METRIC_LABEL[c.metric] ?? c.metric)}</span> ${v}${chg}`;
+      : ` <span class="${c.changePct > 0 ? "up" : c.changePct < 0 ? "down" : "flat"}">(${c.changePct > 0 ? "+" : ""}${esc(c.changePct)}%)</span>`;
+    return `<span class="muted">${esc(METRIC_LABEL[c.metric] ?? c.metric)}</span> ${esc(v)}${chg}`;
   }).join(" · ");
   return `<div class="panel">
     <h2>L1 宏观净流动性 · <span class="${dirClass(m.direction)}">${esc(DIR_LABEL[m.direction] ?? m.direction)}</span></h2>
+    <div class="how">${esc(HOW.macro)}</div>
     <div>${cells || "—"}</div>
     <div class="muted" style="margin-top:4px">${esc((m.drivers ?? [])[0] ?? "")} · 数据 ${qBadge(m.dataQuality)}</div>
+  </div>`;
+}
+
+function chainPanel(d) {
+  const comps = d.layers?.chain?.components ?? [];
+  const rows = comps.length
+    ? comps.map((c) => `<tr>
+        <td>${esc(c.label ?? c.chain)}</td>
+        <td class="num">${pct(c.shareNow)}</td>
+        <td class="num ${dirClass(c.direction)}">${c.shareDeltaPp === null || c.shareDeltaPp === undefined ? "—" : `${c.shareDeltaPp > 0 ? "+" : ""}${Number(c.shareDeltaPp).toFixed(3)}pp`}</td>
+        <td class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</td>
+        <td>${qBadge(c.dataQuality)}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="5" class="muted">链间层无数据(provider 失败或未采集)。</td></tr>`;
+  return `<div class="panel">
+    <h2>L2 链间资金流动 · 稳定币份额</h2>
+    <div class="how">${esc(HOW.chain)}</div>
+    ${tableScroll(`<table>
+      <thead><tr><th>链</th><th class="num">占全局份额</th><th class="num">变化</th><th>方向</th><th>数据</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`)}
   </div>`;
 }
 
@@ -244,21 +418,22 @@ function launchpadPanel(d) {
     ? comps.map((c) => `<tr>
         <td>${esc(c.label ?? c.launchpad)} <span class="muted">${esc(c.chain)}</span></td>
         <td class="num">${usd(c.revenue24h)}</td>
-        <td class="num">${c.share === null || c.share === undefined ? "—" : c.share + "%"}</td>
-        <td class="num ${dirClass(c.direction)}">${c.momentum === null || c.momentum === undefined ? "—" : (c.momentum > 0 ? "+" : "") + (Number(c.momentum) * 100).toFixed(0) + "%"}</td>
+        <td class="num">${c.share === null || c.share === undefined ? "—" : `${esc(c.share)}%`}</td>
+        <td class="num ${dirClass(c.direction)}">${c.momentum === null || c.momentum === undefined ? "—" : `${c.momentum > 0 ? "+" : ""}${(Number(c.momentum) * 100).toFixed(0)}%`}</td>
         <td class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</td>
         <td>${qBadge(c.dataQuality)}</td>
       </tr>`).join("")
     : `<tr><td colspan="6" class="muted">发射台层无数据。</td></tr>`;
-  const chainRoll = (lp?.byChain ?? []).map((c) => `${esc(c.chain)} ${usd(c.revenue24h)}(${c.share ?? "—"}%)`).join(" · ");
-  const leader = lp?.topLaunchpad ? `龙头 <strong>${esc(lp.topLaunchpad.label)}</strong> ${lp.topLaunchpad.share ?? "—"}%` : "";
+  const chainRoll = (lp?.byChain ?? []).map((c) => `${esc(c.chain)} ${usd(c.revenue24h)}(${esc(c.share ?? "—")}%)`).join(" · ");
+  const leader = lp?.topLaunchpad ? `龙头 <strong>${esc(lp.topLaunchpad.label)}</strong> ${esc(lp.topLaunchpad.share ?? "—")}%` : "";
   return `<div class="panel">
     <h2>L3 发射台资金流动 · 24h 收入 / 份额 / 动量</h2>
+    <div class="how">${esc(HOW.launchpad)}</div>
     <div class="muted" style="margin-bottom:8px">${leader}${chainRoll ? ` · 链分布: ${chainRoll}` : ""}</div>
-    <table>
+    ${tableScroll(`<table>
       <thead><tr><th>发射台</th><th class="num">24h 收入</th><th class="num">份额</th><th class="num">动量</th><th>方向</th><th>数据</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>
+    </table>`)}
   </div>`;
 }
 
@@ -268,7 +443,7 @@ function narrativePanel(d) {
     ? comps.map((c) => `<tr>
         <td>${esc(c.sector)}</td>
         <td class="num">${usd(c.tvl)}</td>
-        <td class="num ${dirClass(c.direction)}">${c.change7dPct === null || c.change7dPct === undefined ? "—" : (c.change7dPct > 0 ? "+" : "") + c.change7dPct + "%"}</td>
+        <td class="num ${dirClass(c.direction)}">${c.change7dPct === null || c.change7dPct === undefined ? "—" : `${c.change7dPct > 0 ? "+" : ""}${esc(c.change7dPct)}%`}</td>
         <td class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</td>
         <td>${qBadge(c.dataQuality)}</td>
       </tr>`).join("")
@@ -277,16 +452,17 @@ function narrativePanel(d) {
   const msBlock = ms
     ? `<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px">
         <div class="muted" style="font-size:12px">注意力代理 · CoinGecko 热门搜索 — ${esc(ms.note ?? "")}</div>
-        <div style="margin-top:4px">热门币 ${(ms.trendingCoins ?? []).slice(0, 8).map((c) => `<span class="q">${esc(c.symbol)}${c.change24hPct != null ? ` <span class="${c.change24hPct > 0 ? "up" : c.change24hPct < 0 ? "down" : "flat"}">${c.change24hPct > 0 ? "+" : ""}${c.change24hPct}%</span>` : ""}</span>`).join(" ") || "—"}</div>
+        <div style="margin-top:4px">热门币 ${(ms.trendingCoins ?? []).slice(0, 8).map((c) => `<span class="q">${esc(c.symbol)}${c.change24hPct != null ? ` <span class="${c.change24hPct > 0 ? "up" : c.change24hPct < 0 ? "down" : "flat"}">${c.change24hPct > 0 ? "+" : ""}${esc(c.change24hPct)}%</span>` : ""}</span>`).join(" ") || "—"}</div>
         <div style="margin-top:4px">热门板块 ${(ms.trendingCategories ?? []).slice(0, 6).map((c) => `<span class="q">${esc(c.name)}</span>`).join(" ") || "—"}</div>
       </div>`
     : "";
   return `<div class="panel">
     <h2>L5 主题/板块轮动 · TVL 7d 相对强弱</h2>
-    <table>
+    <div class="how">${esc(HOW.narrative)}</div>
+    ${tableScroll(`<table>
       <thead><tr><th>板块</th><th class="num">TVL</th><th class="num">7d</th><th>方向</th><th>数据</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>
+    </table>`)}
     ${msBlock}
   </div>`;
 }
@@ -297,7 +473,7 @@ function appRevenuePanel(d) {
   const chains = h.byChain ?? [];
   const rows = chains.flatMap((chain) => {
     const warning = chain.singleAppSpike
-      ? `<div class="down">单一协议占比 ${chain.dominantApp?.share ?? "—"}%, 谨慎解读为链级热度。</div>`
+      ? `<div class="down">单一协议占比 ${esc(chain.dominantApp?.share ?? "—")}%, 谨慎解读为链级热度。</div>`
       : "";
     if (!(chain.topApps ?? []).length) {
       return [`<tr>
@@ -311,16 +487,16 @@ function appRevenuePanel(d) {
         <td rowspan="${chain.topApps.length}">${esc(chain.label ?? chain.chain)}${warning}</td>
         <td>${esc(chain.topApps[0].protocol)}</td>
         <td class="num">${usd(chain.topApps[0].revenue24h)}</td>
-        <td class="num">${chain.topApps[0].share === null || chain.topApps[0].share === undefined ? "—" : chain.topApps[0].share + "%"}</td>
-        <td class="num ${dirClass(chain.topApps[0].direction)}">${chain.topApps[0].momentum === null || chain.topApps[0].momentum === undefined ? "—" : (chain.topApps[0].momentum > 0 ? "+" : "") + (Number(chain.topApps[0].momentum) * 100).toFixed(0) + "%"}</td>
+        <td class="num">${chain.topApps[0].share === null || chain.topApps[0].share === undefined ? "—" : `${esc(chain.topApps[0].share)}%`}</td>
+        <td class="num ${dirClass(chain.topApps[0].direction)}">${chain.topApps[0].momentum === null || chain.topApps[0].momentum === undefined ? "—" : `${chain.topApps[0].momentum > 0 ? "+" : ""}${(Number(chain.topApps[0].momentum) * 100).toFixed(0)}%`}</td>
         <td class="${dirClass(chain.topApps[0].direction)}">${esc(DIR_LABEL[chain.topApps[0].direction] ?? chain.topApps[0].direction)}</td>
         <td>${qBadge(chain.dataQuality)}</td>
       </tr>`,
       ...chain.topApps.slice(1).map((app) => `<tr>
         <td>${esc(app.protocol)}</td>
         <td class="num">${usd(app.revenue24h)}</td>
-        <td class="num">${app.share === null || app.share === undefined ? "—" : app.share + "%"}</td>
-        <td class="num ${dirClass(app.direction)}">${app.momentum === null || app.momentum === undefined ? "—" : (app.momentum > 0 ? "+" : "") + (Number(app.momentum) * 100).toFixed(0) + "%"}</td>
+        <td class="num">${app.share === null || app.share === undefined ? "—" : `${esc(app.share)}%`}</td>
+        <td class="num ${dirClass(app.direction)}">${app.momentum === null || app.momentum === undefined ? "—" : `${app.momentum > 0 ? "+" : ""}${(Number(app.momentum) * 100).toFixed(0)}%`}</td>
         <td class="${dirClass(app.direction)}">${esc(DIR_LABEL[app.direction] ?? app.direction)}</td>
         <td>${qBadge(chain.dataQuality)}</td>
       </tr>`),
@@ -329,28 +505,36 @@ function appRevenuePanel(d) {
 
   return `<div class="panel">
     <h2>辅助 · App 收入热度 · 活动热度,不是流动性/净流入</h2>
+    <div class="how">${esc(HOW.appRevenue)}</div>
     <div class="muted" style="margin-bottom:8px">${esc(h.note ?? "协议收入=活动热度,非流动性/净流入")} · 数据 ${qBadge(h.dataQuality)}</div>
-    <table>
+    ${tableScroll(`<table>
       <thead><tr><th>链</th><th>协议</th><th class="num">24h 收入</th><th class="num">份额</th><th class="num">动量</th><th>方向</th><th>数据</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="7" class="muted">App 收入热度无数据。</td></tr>`}</tbody>
-    </table>
+    </table>`)}
   </div>`;
+}
+
+function fundingClass(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n === 0) return "flat";
+  return n > 0 ? "warn" : "up";
 }
 
 function dexcexPanel(d) {
   const x = d.layers?.dexCex;
   const rows = (x?.components ?? []).map((c) => `<tr>
       <td>${esc(c.symbol)}</td>
-      <td class="num">${c.funding === null || c.funding === undefined ? "—" : (Number(c.funding) * 100).toFixed(4) + "%"}</td>
-      <td class="num">${c.perpSpot ?? "—"}</td>
+      <td class="num ${fundingClass(c.funding)}">${c.funding === null || c.funding === undefined ? "—" : `${(Number(c.funding) * 100).toFixed(4)}%`}</td>
+      <td class="num">${esc(c.perpSpot ?? "—")}</td>
     </tr>`).join("");
   return `<div class="panel">
     <h2>L4 DEX↔CEX · <span class="${dirClass(x?.direction)}">${esc(DIR_LABEL[x?.direction] ?? x?.direction ?? "—")}</span>${x?.crowding === "high" ? ' <span class="down">合约拥挤</span>' : ""}</h2>
-    <div class="muted">perp/spot 量比: ${x?.perpSpotRatio ?? "—"} · 数据 ${qBadge(x?.dataQuality)}</div>
-    <table>
+    <div class="how">${esc(HOW.dexCex)}</div>
+    <div class="muted">perp/spot 量比: ${esc(x?.perpSpotRatio ?? "—")} · 数据 ${qBadge(x?.dataQuality)}</div>
+    ${tableScroll(`<table>
       <thead><tr><th>资产</th><th class="num">资金费率</th><th class="num">perp/spot</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="3" class="muted">OKX 未采集(可能代理不可达)。</td></tr>`}</tbody>
-    </table>
+    </table>`)}
   </div>`;
 }
 
@@ -366,19 +550,20 @@ function guidancePanel(d) {
   const rows = (d.guidance ?? []).map((g) => `<tr>
     <td>${esc(g.target)}</td>
     <td class="muted">${g.type === "cex_perp" ? "CEX合约" : "链上现货"}</td>
-    <td class="num">${esc(g.conviction)}</td>
+    <td class="num tier-text-${esc(g.tier)}">${esc(g.conviction)}</td>
     <td><span class="tier tier-${esc(g.tier)}">${esc(g.tierLabel ?? g.tier)}</span></td>
-    <td class="tags">${(g.tailwindLayers ?? []).map((t) => esc(t.layer)).join("/") || "—"}</td>
-    <td class="tags">${(g.headwindLayers ?? []).map((h) => esc(h.layer)).join("/") || "—"}</td>
+    <td class="tags hide-mobile">${(g.tailwindLayers ?? []).map((t) => esc(t.layer)).join("/") || "—"}</td>
+    <td class="tags hide-mobile">${(g.headwindLayers ?? []).map((h) => esc(h.layer)).join("/") || "—"}</td>
     <td class="tags ${g.riskFlags?.length ? "down" : "muted"}">${(g.riskFlags ?? []).map(esc).join("；") || "—"}</td>
     <td>${qBadge(g.dataQuality)}</td>
   </tr>`).join("");
   return `<div class="panel">
     <h2>标的仓位建议(辅助 · 不下单)</h2>
-    <table>
-      <thead><tr><th>标的</th><th>类型</th><th class="num">conviction</th><th>仓位档</th><th>顺风</th><th>逆风</th><th>风险</th><th>数据</th></tr></thead>
+    <div class="how">${esc(HOW.guidance)}</div>
+    ${tableScroll(`<table class="guidance-table">
+      <thead><tr><th>标的</th><th>类型</th><th class="num">conviction</th><th>仓位档</th><th class="hide-mobile">顺风</th><th class="hide-mobile">逆风</th><th>风险</th><th>数据</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="8" class="muted">未配置标的清单。</td></tr>`}</tbody>
-    </table>
+    </table>`)}
   </div>`;
 }
 
