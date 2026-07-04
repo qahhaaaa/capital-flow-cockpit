@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>怎么看 · 资金流向驾驶舱</title>
+    <style>
+      :root {
+        --bg: #0e1116; --panel: #161b22; --line: #2a3340; --txt: #e6edf3; --muted: #8b949e;
+        --up: #3fb950; --down: #f85149; --warn: #d29922; --flat: #6e7681; --accent: #58a6ff;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--txt);
+        font: 15px/1.65 -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+      .wrap { max-width: 820px; margin: 0 auto; padding: 20px 16px 64px; }
+      h1 { font-size: 21px; margin: 0 0 4px; }
+      h2 { font-size: 16px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+      h3 { font-size: 14px; margin: 16px 0 6px; color: var(--accent); }
+      p { margin: 8px 0; }
+      .sub { color: var(--muted); font-size: 13px; }
+      a { color: var(--accent); }
+      .up { color: var(--up); } .down { color: var(--down); } .warn { color: var(--warn); }
+      .flat { color: var(--flat); } .muted { color: var(--muted); }
+      code { background: #0b0e13; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+      .trace { display: grid; grid-template-columns: 1fr; gap: 0; }
+      .trace .step { position: relative; padding: 8px 0 8px 26px; }
+      .trace .step::before { content: ""; position: absolute; left: 7px; top: 16px; bottom: -8px; width: 2px; background: var(--line); }
+      .trace .step:last-child::before { display: none; }
+      .trace .dot { position: absolute; left: 0; top: 11px; width: 16px; height: 16px; border-radius: 50%;
+        background: var(--panel); border: 2px solid var(--accent); font-size: 10px; text-align: center; line-height: 12px; color: var(--accent); }
+      .step .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+      .step .v { font-weight: 600; }
+      .badge { padding: 2px 9px; border-radius: 999px; font-weight: 700; font-size: 13px; border: 1px solid var(--line); display: inline-block; }
+      .b-risk_on { color: var(--up); border-color: var(--up); }
+      .b-risk_off { color: var(--down); border-color: var(--down); }
+      .b-neutral, .b-unknown { color: var(--muted); }
+      .legend { display: grid; grid-template-columns: 1fr; gap: 6px; }
+      .legend div { display: flex; align-items: center; gap: 8px; }
+      .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+      .tier { font-weight: 700; padding: 1px 8px; border-radius: 6px; display: inline-block; font-size: 13px; }
+      .tier-standard { color: #03150a; background: var(--up); }
+      .tier-small { color: var(--up); border: 1px solid var(--up); }
+      .tier-probe { color: var(--warn); border: 1px solid var(--warn); }
+      .tier-flat { color: var(--flat); border: 1px solid var(--flat); }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0; }
+      th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .table-scroll table { min-width: 460px; }
+      .pill { font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); color: var(--muted); }
+      .datasrc { font-size: 12px; color: var(--muted); }
+      .note { border-left: 3px solid var(--warn); padding: 6px 12px; margin: 10px 0; background: rgba(210,153,34,.07); font-size: 13px; }
+      .status { font-size: 12px; color: var(--muted); margin-top: 4px; }
+      .toc a { display: inline-block; margin: 2px 10px 2px 0; font-size: 13px; }
+      .eq { background: #0b0e13; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin: 8px 0; overflow-x: auto; }
+      .fresh-ok { color: var(--up); } .fresh-warn { color: var(--warn); } .fresh-old { color: var(--down); }
+      footer { color: var(--muted); font-size: 12px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>怎么看这张「资金流向驾驶舱」</h1>
+      <p class="sub">跟着钱走(follow the money):把加密资金拆成五层捕捉,合成对具体标的的仓位建议。<b>仅决策辅助,绝不自动下单。</b></p>
+      <p class="status" id="dataStatus">载入数据中…</p>
+      <p><a href="./index.html">← 返回面板</a></p>
+
+      <div class="toc">
+        <a href="#model">① 核心心智模型</a>
+        <a href="#legend">② 颜色 = 好坏</a>
+        <a href="#read">③ 10 秒读结论卡</a>
+        <a href="#guidance">④ 仓位是怎么算出来的</a>
+        <a href="#layers">⑤ 每层怎么读</a>
+        <a href="#trust">⑥ 数据可信吗</a>
+        <a href="#limits">⑦ 边界</a>
+      </div>
+
+      <h2 id="model">① 核心心智模型</h2>
+      <div class="card">
+        <p>一句话:<b>宏观决定水温 → 四层资金流决定往哪流 → 合成每个标的该不该上、上多少。</b></p>
+        <p>五层各自独立取真实免费数据、算出一个 <code>方向 × 强度 × 置信度</code> 的信号,再由引擎加权合成。任何一层取不到数据 → 标 <span class="down">missing</span>,<b>绝不用 0 冒充</b>,也不污染其它层。</p>
+        <table>
+          <thead><tr><th>层</th><th>回答什么</th><th>数据源(免费)</th></tr></thead>
+          <tbody>
+            <tr><td><b>L1 宏观</b></td><td>放水还是收水(水温)</td><td>FRED 净流动性</td></tr>
+            <tr><td><b>L2 链间</b></td><td>钱在哪条链上聚集/迁移</td><td>DeFiLlama 稳定币份额</td></tr>
+            <tr><td><b>L3 发射台</b></td><td>打新资金在哪个台子升温</td><td>DeFiLlama 协议收入</td></tr>
+            <tr><td><b>L4 DEX↔CEX</b></td><td>钱偏现货还是合约、拥不拥挤</td><td>OKX / Hyperliquid 衍生品</td></tr>
+            <tr><td><b>L5 主题</b></td><td>哪个板块/叙事在轮动</td><td>DeFiLlama 板块 TVL</td></tr>
+          </tbody>
+        </table>
+        <p class="datasrc">另有两条旁路(不进引擎,仅参考):稳定币<b>总量潮汐</b>(钱进出整个 crypto 池子)、<b>App 收入热度</b>(链上活动热度)。</p>
+      </div>
+
+      <h2 id="legend">② 颜色就是好坏 —— 看色不看字也能懂</h2>
+      <div class="card legend">
+        <div><span class="sw" style="background:var(--up)"></span><b class="up">绿</b> = 利好风险资产 / 钱在流入 / 升温 / 偏现货(承接型健康钱) / 放水 / 多头共振</div>
+        <div><span class="sw" style="background:var(--down)"></span><b class="down">红</b> = 利空 / 钱在流出 / 降温 / 合约过度拥挤 / 收水 / 空头共振</div>
+        <div><span class="sw" style="background:var(--warn)"></span><b class="warn">黄</b> = 中性 / 持平 / 分歧 / 只够"试探" / 数据部分可用(partial) / 合约偏热</div>
+        <div><span class="sw" style="background:var(--flat)"></span><b class="flat">灰</b> = 未知 / 数据缺失(missing)—— 看到灰色就知道"这块现在没数,别当 0 用"</div>
+      </div>
+
+      <h2 id="read">③ 10 秒读懂顶部「结论卡」—— 数据如何一步步支撑结论</h2>
+      <p class="sub">下面每张卡都用你面板<b>此刻的真实数字</b>,把「原始数据 → 该层信号 → 结论卡那句话」的链路拆开给你看。</p>
+      <div id="traces"></div>
+
+      <h2 id="guidance">④ 仓位档是怎么算出来的(最关键)</h2>
+      <div class="card">
+        <p>每个标的的 <code>conviction(0–100)</code> = 各层<b>顺风分</b>减<b>逆风分</b>,再乘宏观闸门系数:</p>
+        <div class="eq">单层得分 = 权重 × (该层强度/100) × 置信度系数<br/>
+        权重:链 0.3 · 发射台 0.3 · 主题 0.2 · DEX↔CEX 0.2　|　置信度:高=1 中=0.6 低=0.3<br/>
+        conviction = clamp( (顺风Σ − 逆风Σ) × 100 × 宏观系数 , 0, 100)　宏观系数:放水 1.1 · 中性 1 · 未知 0.85 · <span class="down">收水 0.5</span><br/>
+        档位:≥75 <span class="tier tier-standard">标准</span>　≥50 <span class="tier tier-small">小仓</span>　≥25 <span class="tier tier-probe">试探</span>　否则 <span class="tier tier-flat">空仓</span></div>
+        <p>再叠加三条硬规则(顺序很重要):</p>
+        <ul>
+          <li><b>发射台硬下限</b>:某台升温 <b>且非收水</b> → 该台标的至少 <span class="tier tier-probe">试探</span>(哪怕分数很低)。</li>
+          <li><b>风险降档</b>:每个风险标记(如合约拥挤、小盘出场流动性差)往下降一档。</li>
+          <li><b>收水封顶</b>:宏观收水时,任何标的最高只能 <span class="tier tier-probe">试探</span>(最后执行,一票压制)。</li>
+        </ul>
+        <div id="workedExample"></div>
+      </div>
+
+      <h2 id="layers">⑤ 每层怎么读(数值好坏对照)</h2>
+      <div class="table-scroll card">
+        <table>
+          <thead><tr><th>层 / 指标</th><th>怎么算</th><th class="up">好(绿)</th><th class="down">差 / 警惕(红)</th></tr></thead>
+          <tbody>
+            <tr><td><b>L1 净流动性</b></td><td>美联储资产负债表 − TGA − RRP</td><td>环比上行 = 放水</td><td>下行 = 收水(压制所有仓位)</td></tr>
+            <tr><td><b>L2 份额变化(pp)</b></td><td>该链稳定币占全局份额、按真实 4h 锚定的变化</td><td>&gt;0 = 资金净迁入该链</td><td>&lt;0 = 资金流出;"拐点"=慢漂移预警</td></tr>
+            <tr><td><b>L3 24h 收入 / 动量</b></td><td>发射台协议真金白银收入 + 环比动量</td><td>收入高 + 动量&gt;0 = 打新主战场升温</td><td>动量&lt;0 = 降温</td></tr>
+            <tr><td><b>L4 funding / perp-spot</b></td><td>合约资金费率 + 合约/现货成交比</td><td>偏现货 = 承接型健康钱</td><td>funding 高 + 比值高 = 挤在合约,过热防挤仓</td></tr>
+            <tr><td><b>L5 板块 7d TVL</b></td><td>各板块 TVL 的 7 天相对强弱</td><td>&gt;0 = 叙事资金轮入</td><td>&lt;0 = 轮出</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">L4 说明:资金费率(funding)&gt;0 表示做多的人在向做空的人<b>付费</b> → 多头拥挤、合约过热,是<b>提示防挤仓的黄灯</b>,不是看多信号。真正健康的是钱回到<b>现货</b>去承接。</p>
+
+      <h2 id="trust">⑥ 这些数据可信吗 —— 看「可信度栏」</h2>
+      <div class="card">
+        <p>结论卡正下方那条就是可信度栏,三样东西一眼确认:</p>
+        <ul>
+          <li><b>更新时间</b>:「X 分钟前」。每小时自动采一次;<span class="warn">超过 90 分钟变黄</span>、<span class="down">超 3 小时变红</span>提示可能滞后。</li>
+          <li><b>五个质量灯</b>:宏观/链间/发射台/DEX↔CEX/主题,<span class="up">绿=ok</span> <span class="warn">黄=partial</span> <span class="down">红=missing</span>。</li>
+          <li><b>点开看源</b>:每个数据源(FRED/DeFiLlama/OKX…)的实时成功/失败状态都列出来,失败如实标注,不藏。</li>
+        </ul>
+        <p class="datasrc">你此刻的状态:<span id="trustNow" class="muted">…</span></p>
+        <p class="note">数据诚实是这个项目的铁律:取不到就标 missing/partial,<b>绝不用 0 或样例数字冒充</b>。所以你看到灰色/缺失时,那是真话,不是 bug。</p>
+      </div>
+
+      <h2 id="limits">⑦ 必须知道的边界</h2>
+      <div class="card">
+        <ul>
+          <li><b>只辅助、不下单</b>:所有 conviction 与档位都是观察建议,交易可用等级上限 <code>watch_only</code>,永不接私钥、永不自动交易。</li>
+          <li><b>阈值是相对的</b>:强度基于<b>滚动分位 / 变化率</b>,不绑死绝对数字(绝对阈值易被刷、易过时)。刚起步历史点少时,强度/方向会显示 partial,需累积(方向≥4h、ok≥24h、潮汐 7d 指标≥7 天)。</li>
+          <li><b>代理指标要打折</b>:链间用"稳定币份额"代理资金迁移(真实桥净流是付费的);主题层的"热门搜索"只是注意力代理、可被操纵,<b>不进引擎</b>。</li>
+          <li><b>顶部宏观三曲线</b>(大科技 capex / ARR / 存储价)是<b>手工维护、非实时</b>的景气背景,已折叠在页面最底部,<b>不进五层信号</b>。</li>
+        </ul>
+      </div>
+
+      <footer>
+        本页随面板数据实时更新(打开线上版或本地 <code>npm run serve</code> 时)。讲解基于引擎当前逻辑,数值取自 <code>./data/cockpit.json</code>。
+        <div id="footStamp" class="status"></div>
+      </footer>
+    </div>
+
+    <script>
+      // 当前快照兜底(以 file:// 直接打开、无法 fetch 时使用);线上/本地 serve 会用实时数据覆盖。
+      const FALLBACK = {"meta":{"generatedAt":"2026-07-04T09:30:43.375Z","historyPoints":194},"regime":"risk_on","moneyLocation":"偏 CEX 合约(投机/杠杆主导)","flowState":{"agreement":{"bullish":2,"bearish":1,"net":"aligned_up"},"rotationEdges":[{"from":"moonshot","to":"believe","type":"launchpad","strength":100,"confidence":"high"}]},"layers":{"macro":{"direction":"risk_on","dataQuality":"ok","components":[{"metric":"netLiquidityUsdB","value":5842.2,"changePct":0.55},{"metric":"walclUsdB","value":6724.6},{"metric":"tgaUsdB","value":880.2},{"metric":"rrpUsdB","value":2.2}]},"chain":{"components":[{"label":"SOL","shareNow":4.9576,"shareDeltaPp":0.0021,"direction":"flat","strength":12.6,"inflection":null,"dataQuality":"ok"},{"label":"Base","shareNow":1.6076,"shareDeltaPp":0,"direction":"flat","strength":2.1,"dataQuality":"ok"},{"label":"ETH 主网","shareNow":50.2308,"shareDeltaPp":0.0001,"direction":"flat","strength":0.5,"dataQuality":"ok"},{"label":"BSC","shareNow":4.6681,"shareDeltaPp":0.0006,"direction":"flat","strength":24.7,"dataQuality":"ok"}]},"launchpad":{"topLaunchpad":{"label":"pump.fun","share":95.1},"components":[{"label":"pump.fun","revenue24h":852707,"share":95.1,"momentum":0.195,"direction":"heating"},{"label":"four.meme","revenue24h":28869,"share":3.2,"momentum":-0.013,"direction":"flat"}]},"dexCex":{"direction":"to_perp","crowding":"normal","perpSpotRatio":18.52,"dataQuality":"ok","components":[{"symbol":"BTC","funding":0.0000593,"perpSpot":11.17},{"symbol":"SOL","funding":0.0001,"perpSpot":15.91}]},"narrative":{"components":[{"sector":"Liquid Staking","change7dPct":11.81,"direction":"rotate_in"},{"sector":"Lending","change7dPct":6.99,"direction":"rotate_in"}]}},"stableTide":{"direction":"inflow","mcapUsd":304033824632,"delta24hPct":0.185,"delta7dPct":null,"cusumAlarm":null,"points":14,"dataQuality":"partial"},"guidance":[{"target":"WIF","type":"onchain_spot","conviction":5,"tier":"probe","tierLabel":"试探","tailwindLayers":[{"layer":"launchpad"}],"headwindLayers":[{"layer":"dexCex"}],"riskFlags":[]},{"target":"AERO","type":"onchain_spot","conviction":0,"tier":"flat","tierLabel":"空仓","tailwindLayers":[],"headwindLayers":[{"layer":"dexCex"}],"riskFlags":[]},{"target":"BNB-PERP","type":"cex_perp","conviction":2,"tier":"flat","tierLabel":"空仓","tailwindLayers":[{"layer":"dexCex"}],"headwindLayers":[],"riskFlags":[]}],"dataHealth":{"layers":[{"layer":"macro","dataQuality":"ok"},{"layer":"chain","dataQuality":"ok"},{"layer":"launchpad","dataQuality":"ok"},{"layer":"dexCex","dataQuality":"ok"},{"layer":"narrative","dataQuality":"ok"}]}};
+
+      const REGIME = { risk_on: "放水", risk_off: "收水", neutral: "中性", unknown: "未知" };
+      const TIERLBL = { standard: "标准", small: "小仓", probe: "试探", flat: "空仓" };
+      const esc = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      const up = ["risk_on","inflow","heating","rotate_in","to_spot"];
+      const down = ["risk_off","outflow","cooling","rotate_out","to_perp"];
+      const cls = (d) => up.includes(d) ? "up" : down.includes(d) ? "down" : "flat";
+      const pp = (v) => v == null ? "—" : (v > 0 ? "+" : "") + Number(v).toFixed(4) + "pp";
+      const pctS = (v) => v == null ? "—" : (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+      const usd = (v) => { if (v == null) return "—"; const a = Math.abs(v); if (a>=1e9) return "$"+(v/1e9).toFixed(2)+"B"; if (a>=1e6) return "$"+(v/1e6).toFixed(2)+"M"; if (a>=1e3) return "$"+(v/1e3).toFixed(1)+"K"; return "$"+v.toFixed(0); };
+
+      function step(n, k, v) { return `<div class="step"><span class="dot">${n}</span><div class="k">${k}</div><div class="v">${v}</div></div>`; }
+      function traceCard(title, steps) { return `<div class="card"><h3>${title}</h3><div class="trace">${steps.join("")}</div></div>`; }
+
+      function render(d) {
+        // ③ traces
+        const t = [];
+        // 水位
+        const m = d.layers?.macro || {}; const nl = (m.components || []).find(c => c.metric === "netLiquidityUsdB");
+        t.push(traceCard("结论卡「水位」 — 宏观定水温,收水时一票压制所有仓位", [
+          step(1, "原始数据 · FRED", `净流动性 = 资产负债表 ${usd((m.components||[]).find(c=>c.metric==='walclUsdB')?.value*1e9)} − TGA ${usd((m.components||[]).find(c=>c.metric==='tgaUsdB')?.value*1e9)} − RRP ${usd((m.components||[]).find(c=>c.metric==='rrpUsdB')?.value*1e9)} ≈ <b>${nl?.value ?? "—"}B</b>`),
+          step(2, "该层信号", `环比 <span class="${nl?.changePct>0?'up':nl?.changePct<0?'down':'flat'}">${pctS(nl?.changePct)}</span> → 方向 <b class="${cls(m.direction)}">${m.direction === 'risk_on' ? '放水' : m.direction === 'risk_off' ? '收水' : '中性'}</b>`),
+          step(3, "结论卡显示", `<span class="badge b-${esc(d.regime)}">${REGIME[d.regime] ?? d.regime}</span> ${esc(d.moneyLocation ?? '')} · 一致度 <b class="${d.flowState?.agreement?.net==='aligned_up'?'up':d.flowState?.agreement?.net==='aligned_down'?'down':'warn'}">${d.flowState?.agreement?.net === 'aligned_up' ? '多头共振' : d.flowState?.agreement?.net === 'aligned_down' ? '空头共振' : '分歧'}</b>(多头 ${d.flowState?.agreement?.bullish}/空头 ${d.flowState?.agreement?.bearish})`),
+        ]));
+        // 链间
+        const chain = (d.layers?.chain?.components) || [];
+        const inflow = chain.filter(c => c.direction === "inflow" && c.shareDeltaPp != null).sort((a,b)=>b.shareDeltaPp-a.shareDeltaPp)[0];
+        const chEdge = (d.flowState?.rotationEdges || []).find(e => e.type === "chain");
+        const rows = chain.map(c => `${esc(c.label)} ${Number(c.shareNow).toFixed(2)}% <span class="${cls(c.direction)}">${pp(c.shareDeltaPp)}</span>`).join(" · ");
+        t.push(traceCard("结论卡「链间」 — 钱在四条链间怎么迁移", [
+          step(1, "原始数据 · DeFiLlama 稳定币份额", rows || "—"),
+          step(2, "该层信号", inflow ? `最大净迁入:<b class="up">${esc(inflow.label)} ${pp(inflow.shareDeltaPp)}</b>` : `四链变化都在死区内 → <b class="flat">无显著迁移</b>`),
+          step(3, "结论卡显示", (inflow ? `钱在流入 ${esc(inflow.label)}` : "链间无显著迁移") + (chEdge ? ` · 轮动 ${esc(chEdge.from)}→${esc(chEdge.to)}` : "")),
+          step("!", "教学点", `就算别处有轮动边(如当前 <span class="muted">${(d.flowState?.rotationEdges||[])[0] ? esc(d.flowState.rotationEdges[0].from)+'→'+esc(d.flowState.rotationEdges[0].to)+'('+esc(d.flowState.rotationEdges[0].type)+')' : '无'}</span>),只要它<b>不是 chain 类型</b>就不会挂在链间行 —— 那是发射台内部的轮动,显示在「轮动地图」里,避免自相矛盾。`),
+        ]));
+        // 发射台
+        const lp = d.layers?.launchpad || {}; const top = lp.topLaunchpad; const topComp = (lp.components||[]).find(c => c.label === top?.label);
+        t.push(traceCard("结论卡「发射台」 — 打新资金在哪个台子升温", [
+          step(1, "原始数据 · DeFiLlama 协议收入", (lp.components||[]).slice(0,3).map(c => `${esc(c.label)} ${usd(c.revenue24h)}(${c.share}%,动量 <span class="${cls(c.direction)}">${c.momentum!=null?(c.momentum>0?'+':'')+(c.momentum*100).toFixed(0)+'%':'—'}</span>)`).join(" · ")),
+          step(2, "该层信号", top ? `龙头 <b>${esc(top.label)}</b> 占 <b>${top.share}%</b>,方向 <span class="${cls(topComp?.direction)}">${topComp?.direction === 'heating' ? '升温' : topComp?.direction === 'cooling' ? '降温' : '持平'}</span>` : "—"),
+          step(3, "结论卡显示", top ? `${esc(top.label)} 领跑(份额 ${top.share}%),${topComp?.direction === 'heating' ? '升温中' : '热度持平'}` : "发射台数据缺失"),
+        ]));
+        // 潮汐+杠杆
+        const tide = d.stableTide || {}; const dx = d.layers?.dexCex || {};
+        t.push(traceCard("结论卡「潮汐 + 杠杆」 — 钱进没进场、进来后去了现货还是合约", [
+          step(1, "原始数据", `稳定币总市值 <b>${usd(tide.mcapUsd)}</b>(24h <span class="${cls(tide.direction)}">${pctS(tide.delta24hPct)}</span>)　|　合约/现货量比 <b>${dx.perpSpotRatio ?? "—"}</b>,资金费率方向 <span class="${cls(dx.direction)}">${dx.direction === 'to_perp' ? '偏合约' : dx.direction === 'to_spot' ? '偏现货' : '均衡'}</span>`),
+          step(2, "该层信号", `潮汐 <b class="${cls(tide.direction)}">${tide.direction === 'inflow' ? '新钱进场' : tide.direction === 'outflow' ? '资金撤出' : tide.direction === 'flat' ? '总盘持平' : '积累中'}</b>　|　拥挤度 <b class="${dx.crowding==='high'?'down':'flat'}">${dx.crowding === 'high' ? '高(过热)' : dx.crowding === 'normal' ? '正常' : '未知'}</b>`),
+          step(3, "结论卡显示", `${tide.direction === 'inflow' ? '新钱进场' : tide.direction === 'outflow' ? '资金撤出' : '总盘持平'} · 24h ${pctS(tide.delta24hPct)}${dx.crowding === 'high' ? ' · <span class="down">合约拥挤,防挤仓</span>' : ''}`),
+          step("!", "教学点", `注意组合读:当前<b class="up">新钱在进场</b>,但钱主要<b class="down">偏向合约(${dx.direction === 'to_perp' ? '投机/杠杆主导' : '—'})</b>而非现货 —— 进场的是投机资金,承接型现货偏弱。这正是「水位」行说"偏 CEX 合约"的由来。`),
+        ]));
+        document.getElementById("traces").innerHTML = t.join("");
+
+        // ④ worked example: prefer a row with launchpad tailwind (the floor rule showcase)
+        const g = d.guidance || [];
+        const ex = g.find(x => (x.tailwindLayers||[]).some(l => l.layer === "launchpad")) || g[0];
+        if (ex) {
+          const tw = (ex.tailwindLayers||[]).map(l => l.layer).join("/") || "无";
+          const hw = (ex.headwindLayers||[]).map(l => l.layer).join("/") || "无";
+          const lpFloor = (ex.tailwindLayers||[]).some(l => l.layer === "launchpad") && d.regime !== "risk_off";
+          const byScore = ex.conviction >= 75 ? "标准" : ex.conviction >= 50 ? "小仓" : ex.conviction >= 25 ? "试探" : "空仓";
+          document.getElementById("workedExample").innerHTML = `
+            <h3>真实例子:${esc(ex.target)} —— 为什么是「${esc(ex.tierLabel || TIERLBL[ex.tier])}」</h3>
+            <div class="trace">
+              ${step(1, "顺风层", `<span class="up">${tw}</span>${(ex.tailwindLayers||[]).some(l=>l.layer==='launchpad') ? '(pump.fun 升温给了它顺风)' : ''}`)}
+              ${step(2, "逆风层", `<span class="down">${hw}</span>${(ex.headwindLayers||[]).some(l=>l.layer==='dexCex') ? '(钱偏合约、现货承接弱,拖累链上现货标的)' : ''}`)}
+              ${step(3, "算出的 conviction", `<b>${ex.conviction}</b> / 100 → 按分数本应是「${byScore}」`)}
+              ${step(4, "叠加硬规则", lpFloor ? `<b class="warn">发射台升温 + 非收水 → 硬下限抬到「试探」</b>${ex.riskFlags?.length ? ` → 再因 ${ex.riskFlags.length} 个风险降档` : ''}` : (ex.riskFlags?.length ? `${ex.riskFlags.length} 个风险各降一档` : "无额外调整"))}
+              ${step("=", "最终档位", `<span class="tier tier-${esc(ex.tier)}">${esc(ex.tierLabel || TIERLBL[ex.tier])}</span> ${ex.conviction < 25 && ex.tier === "probe" ? '<span class="muted">← 分数只有 '+ex.conviction+' 却是"试探",全靠发射台硬下限托底</span>' : ''}`)}
+            </div>
+            <p class="note">这就是"数据支撑结论"的完整闭环:pump.fun 的真实收入升温(L3)→ 触发硬下限,把打分极低的 ${esc(ex.target)} 托到"试探";而 L4 资金偏合约成了逆风,把分数压到 ${ex.conviction}。任何一个数字变了,这个结论就会变。</p>`;
+        }
+
+        // ⑥ trust now
+        const h = (d.dataHealth?.layers) || [];
+        const okc = h.filter(l => l.dataQuality === "ok").length;
+        const mins = Math.max(0, Math.round((Date.now() - Date.parse(d.meta?.generatedAt || 0)) / 60000));
+        const fresh = isFinite(mins) ? (mins < 60 ? mins + " 分钟前" : Math.floor(mins/60) + " 小时前") : "未知";
+        const fc = mins > 180 ? "fresh-old" : mins > 90 ? "fresh-warn" : "fresh-ok";
+        document.getElementById("trustNow").innerHTML = `更新 <span class="${fc}">${fresh}</span> · 五层质量 <b>${okc}/${h.length} ok</b> · 历史 ${d.meta?.historyPoints ?? 0} 点`;
+      }
+
+      function setStatus(live, stamp) {
+        document.getElementById("dataStatus").innerHTML = live
+          ? `<span class="up">● 实时数据</span> · 采集于 ${esc(stamp)}`
+          : `<span class="warn">● 静态快照</span>(未连到实时数据,以下数字为示例;打开线上版或本地 serve 可载入实时)· 快照 ${esc(stamp)}`;
+        document.getElementById("footStamp").textContent = "本次渲染数据时间:" + (stamp || "—");
+      }
+
+      (async () => {
+        let d = FALLBACK, live = false;
+        try {
+          const res = await fetch("./data/cockpit.json", { cache: "no-store" });
+          if (res.ok) { d = await res.json(); live = true; }
+        } catch (e) { /* file:// or offline -> fallback */ }
+        setStatus(live, d.meta?.generatedAt);
+        render(d);
+      })();
+    </script>
+  </body>
+</html>

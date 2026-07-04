@@ -182,7 +182,7 @@ function render(d) {
     rotationPanel(d),
     healthPanel(d),
     macroContextDetails(),
-    `<footer>schema ${esc(d.schema)} · 生成于 ${esc(d.meta?.generatedAt ?? "—")} · 历史点 ${esc(d.meta?.historyPoints ?? 0)}</footer>`,
+    `<footer><a href="./guide.html">📖 怎么看这张面板</a> · schema ${esc(d.schema)} · 生成于 ${esc(d.meta?.generatedAt ?? "—")} · 历史点 ${esc(d.meta?.historyPoints ?? 0)}</footer>`,
   ].join("");
 }
 
