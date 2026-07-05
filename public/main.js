@@ -154,6 +154,7 @@ async function main() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     app.innerHTML = render(await res.json());
     setupMacroContextLazyHydrate();
+    setupGuidanceDetails();
   } catch (error) {
     app.innerHTML = `<p class="err">无法加载 ./data/cockpit.json:${esc(error.message)}。请先运行 <code>npm run collect</code>。</p>`;
   }
@@ -168,6 +169,33 @@ function setupMacroContextLazyHydrate() {
     loaded = true;
     void hydrateMacroContextPanel();
   });
+}
+
+function setupGuidanceDetails() {
+  document.querySelectorAll(".guidance-main-row").forEach((row) => {
+    row.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("button,a")) return;
+      toggleGuidanceDetail(row.dataset.guidanceIndex);
+    });
+  });
+  document.querySelectorAll(".guidance-toggle").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleGuidanceDetail(button.dataset.guidanceIndex);
+    });
+  });
+}
+
+function toggleGuidanceDetail(index) {
+  const detail = document.querySelector(`[data-guidance-detail="${index}"]`);
+  const button = document.querySelector(`.guidance-toggle[data-guidance-index="${index}"]`);
+  if (!detail) return;
+  const expanded = detail.style.display === "table-row";
+  detail.style.display = expanded ? "none" : "table-row";
+  if (button) {
+    button.setAttribute("aria-expanded", expanded ? "false" : "true");
+    button.textContent = expanded ? "+" : "-";
+  }
 }
 
 function render(d) {
@@ -193,9 +221,9 @@ const HOW = {
   macro: "净流动性=美联储资产负债表−TGA−RRP;上行=放水利好风险资产,收水时引擎自动压制所有仓位建议",
   chain: "份额Δ=存量迁移(稳定币);DEX量动量=流量热度;费用动量=链上活动;方向由三者加权(0.5/0.3/0.2),轮动边需份额+DEX量双确认;拐点=慢漂移警报",
   launchpad: "24h 收入=打新热度的真金白银;动量>0=升温;份额=占五台总收入比;龙头=当前打新主战场",
-  dexCex: "funding>0=多头付费=资金挤在合约(过热防挤仓);偏现货=承接型资金更健康;来源 OKX,451 时自动切 Hyperliquid(无现货腿标 partial)",
+  dexCex: "funding>0=多头付费=资金挤在合约(过热防挤仓);偏现货=承接型资金更健康;来源 OKX,451 时自动切 Hyperliquid(无现货腿标 partial)——闸门信号，不指导单一标的",
   narrative: "板块 7d TVL 相对强弱=叙事资金轮动;热门搜索仅是注意力代理,可被操纵,不入引擎",
-  tide: "稳定币总市值变化=钱进出 crypto 整个池子;与链间份额(池内轮动)独立",
+  tide: "稳定币总市值变化=钱进出 crypto 整个池子;与链间份额(池内轮动)独立——闸门信号，不指导单一标的",
   appRevenue: "协议收入=活动热度,不是流动性也不是净流入;单协议占比>60% 会标记单点尖刺",
   guidance: "conviction 由各层方向×强度×置信度加权,宏观收水封顶试探;顺风/逆风=支持/反对该标的的层;每条风险降一档",
 };
@@ -550,8 +578,61 @@ function rotationPanel(d) {
   return `<div class="panel"><h2>轮动地图</h2>${body}</div>`;
 }
 
+const GUIDANCE_METRIC_FIELDS = [
+  "priceUsd", "px5mPct", "px1hPct", "px6hPct", "px24hPct", "vol6hUsd", "vol24hUsd",
+  "liqUsd", "buys24h", "sells24h", "fdvUsd", "marketCapUsd", "source", "at",
+];
+const GUIDANCE_METRIC_LABELS = {
+  priceUsd: "价格", px5mPct: "5m", px1hPct: "1h", px6hPct: "6h", px24hPct: "24h",
+  vol6hUsd: "6h 成交", vol24hUsd: "24h 成交", liqUsd: "流动性", buys24h: "24h 买入",
+  sells24h: "24h 卖出", fdvUsd: "FDV", marketCapUsd: "市值", source: "来源", at: "时间",
+};
+
+function guidanceMetricValue(key, value) {
+  if (value === null || value === undefined) return "—";
+  if (key.startsWith("px")) return pctSigned(Number(value));
+  if (["priceUsd", "vol6hUsd", "vol24hUsd", "liqUsd", "fdvUsd", "marketCapUsd"].includes(key)) return usd(value);
+  if (["buys24h", "sells24h"].includes(key)) return Number(value).toLocaleString("en-US");
+  return String(value);
+}
+
+function guidanceMetricRows(metrics) {
+  const keys = metrics && typeof metrics === "object"
+    ? [...new Set([...GUIDANCE_METRIC_FIELDS, ...Object.keys(metrics)])]
+    : GUIDANCE_METRIC_FIELDS;
+  return keys.map((key) => `<div class="metric-item"><span>${esc(GUIDANCE_METRIC_LABELS[key] ?? key)}</span><strong>${esc(guidanceMetricValue(key, metrics?.[key]))}</strong></div>`).join("");
+}
+
+function guidanceFactorRows(factors) {
+  if (!Array.isArray(factors) || factors.length === 0) return `<div class="muted">因子明细缺失。</div>`;
+  return factors.map((factor) => `<div class="factor-item">
+    <div><strong>${esc(factor.label ?? factor.key)}</strong><span class="muted"> ${esc(factor.key)}</span></div>
+    <div>${esc(factor.detail ?? "—")}</div>
+    <div class="num ${Number(factor.pts) > 0 ? "up" : Number(factor.pts) < 0 ? "down" : "flat"}">${Number.isFinite(Number(factor.pts)) ? `${Number(factor.pts) > 0 ? "+" : ""}${Number(factor.pts).toFixed(1)} 点` : "—"}</div>
+  </div>`).join("");
+}
+
+function guidanceDetailRow(g, index) {
+  return `<tr class="detail-row" data-guidance-detail="${index}" style="display:none">
+    <td colspan="9">
+      <div class="guidance-detail">
+        <div>
+          <h3>标的级 metrics</h3>
+          <div class="metric-grid">${guidanceMetricRows(g.metrics)}</div>
+        </div>
+        <div>
+          <h3>conviction 因子</h3>
+          <div class="factor-list">${guidanceFactorRows(g.factors)}</div>
+        </div>
+        <div class="muted gap-note">持币人数/分时净流入：免费云端无源，标缺口（可本地 GMGN 补）。</div>
+      </div>
+    </td>
+  </tr>`;
+}
+
 function guidancePanel(d) {
-  const rows = (d.guidance ?? []).map((g) => `<tr>
+  const rows = (d.guidance ?? []).map((g, index) => `<tr class="guidance-main-row" data-guidance-index="${index}">
+    <td><button class="guidance-toggle" type="button" data-guidance-index="${index}" aria-expanded="false" aria-label="展开 ${esc(g.target)} 明细">+</button></td>
     <td>${esc(g.target)}</td>
     <td class="muted">${g.type === "cex_perp" ? "CEX合约" : "链上现货"}</td>
     <td class="num tier-text-${esc(g.tier)}">${esc(g.conviction)}</td>
@@ -560,13 +641,13 @@ function guidancePanel(d) {
     <td class="tags hide-mobile">${(g.headwindLayers ?? []).map((h) => esc(h.layer)).join("/") || "—"}</td>
     <td class="tags ${g.riskFlags?.length ? "down" : "muted"}">${(g.riskFlags ?? []).map(esc).join("；") || "—"}</td>
     <td>${qBadge(g.dataQuality)}</td>
-  </tr>`).join("");
+  </tr>${guidanceDetailRow(g, index)}`).join("");
   return `<div class="panel">
     <h2>标的仓位建议(辅助 · 不下单)</h2>
     <div class="how">${esc(HOW.guidance)}</div>
     ${tableScroll(`<table class="guidance-table">
-      <thead><tr><th>标的</th><th>类型</th><th class="num">conviction</th><th>仓位档</th><th class="hide-mobile">顺风</th><th class="hide-mobile">逆风</th><th>风险</th><th>数据</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="8" class="muted">未配置标的清单。</td></tr>`}</tbody>
+      <thead><tr><th></th><th>标的</th><th>类型</th><th class="num">conviction</th><th>仓位档</th><th class="hide-mobile">顺风</th><th class="hide-mobile">逆风</th><th>风险</th><th>数据</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="9" class="muted">未配置标的清单。</td></tr>`}</tbody>
     </table>`)}
   </div>`;
 }

@@ -24,7 +24,7 @@ export function assembleCockpit({
   stableTide = null,
 } = {}) {
   const flowState = computeFlowState(layerSignals);
-  const guidance = computePositionGuidance(layerSignals, watchlist, { regime: flowState.regime });
+  const guidance = computePositionGuidance(layerSignals, watchlist, { regime: flowState.regime, appRevenueHeat });
 
   return {
     schema: "cockpit/v2",

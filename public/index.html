@@ -72,7 +72,20 @@
       .q-partial { color: var(--warn); border-color: var(--warn); }
       .q-missing { color: var(--down); border-color: var(--down); }
       .tags { color: var(--muted); font-size: 12px; }
-      .err { color: var(--down); }
+      .guidance-main-row { cursor: pointer; }
+      .guidance-main-row:hover { background: rgba(88,166,255,.05); }
+      .guidance-toggle { width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 6px;
+        background: transparent; color: var(--accent); cursor: pointer; font-weight: 700; line-height: 1; }
+      .detail-row > td { background: rgba(88,166,255,.04); padding: 10px 12px; }
+      .guidance-detail { display: grid; gap: 12px; min-width: 520px; }
+      .guidance-detail h3 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+      .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 6px; }
+      .metric-item, .factor-item { border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; background: rgba(14,17,22,.36); }
+      .metric-item span { display: block; color: var(--muted); font-size: 11px; }
+      .metric-item strong { font-size: 12px; font-variant-numeric: tabular-nums; }
+      .factor-list { display: grid; gap: 6px; }
+      .factor-item { display: grid; grid-template-columns: 150px minmax(220px, 1fr) 72px; gap: 8px; align-items: start; }
+      .gap-note { border-top: 1px solid var(--line); padding-top: 8px; }      .err { color: var(--down); }
       .edge { color: var(--accent); }
       .macro-context { margin-bottom: 14px; }
       .macro-context-shell { margin-top: 14px; }
@@ -115,8 +128,10 @@
         .badge, .tier, .q, .risk-count { min-height: 32px; display: inline-flex; align-items: center; }
         th, td { padding: 6px 7px; font-size: 12px; }
         .table-scroll table { min-width: 520px; }
-        .table-scroll table.guidance-table { min-width: 420px; } /* must out-rank .table-scroll table */
-        .hide-mobile { display: none; }
+        .table-scroll table.guidance-table { min-width: 560px; }
+        .guidance-detail { min-width: 520px; }
+        .metric-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+        .factor-item { grid-template-columns: 1fr; }        .hide-mobile { display: none; }
       }
     </style>
   </head>

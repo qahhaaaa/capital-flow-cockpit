@@ -12,11 +12,30 @@ const TIER_LABEL = { flat: "空仓", probe: "试探", small: "小仓", standard:
 export const WEIGHTS = { chain: 0.3, launchpad: 0.3, narrative: 0.2, dexCex: 0.2 };
 const CONF_FACTOR = { high: 1, medium: 0.6, low: 0.3 };
 const REGIME_MULT = { risk_on: 1.1, neutral: 1, unknown: 0.85, risk_off: 0.5 };
+const ASSET_FACTOR_WEIGHTS = { momentum: 0.2, flow: 0.1, turnover: 0.1 };
 
 const POSITIVE = new Set(["risk_on", "inflow", "heating", "rotate_in", "to_spot"]);
 const NEGATIVE = new Set(["risk_off", "outflow", "cooling", "rotate_out", "to_perp"]);
 
 const confFactor = (confidence) => CONF_FACTOR[confidence] ?? 0.3;
+const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+
+function finiteNumber(value) {
+  if (value === null || value === undefined) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function metricNumber(metrics, key) {
+  if (!metrics || typeof metrics !== "object" || !hasOwn(metrics, key)) return null;
+  return finiteNumber(metrics[key]);
+}
+
+function signed(value, digits = 1) {
+  if (!Number.isFinite(value)) return "—";
+  const rounded = round(value, digits);
+  return `${rounded > 0 ? "+" : ""}${rounded}`;
+}
 
 function tierFromConviction(conviction) {
   if (conviction >= 75) return TIER.STANDARD;
@@ -83,16 +102,139 @@ function findComponent(signal, key, tag) {
   return (signal.components ?? []).find((component) => component[key] === tag) ?? null;
 }
 
-function buildRationale(tier, tailwinds, headwinds, riskFlags, regime) {
+function weightedLayerPoints(weight, strength, confidence) {
+  const cleanStrength = finiteNumber(strength);
+  if (cleanStrength === null) return 0;
+  return (weight * cleanStrength) / 100 * confFactor(confidence);
+}
+
+function buildRationale(tier, tailwinds, headwinds, riskFlags, regime, notes = []) {
   const parts = [`仓位档:${TIER_LABEL[tier]}`];
   if (tailwinds.length) parts.push(`顺风:${tailwinds.map((t) => t.layer).join("/")}`);
   if (headwinds.length) parts.push(`逆风:${headwinds.map((h) => h.layer).join("/")}`);
+  if (notes.length) parts.push(notes.join("；"));
   if (regime === "risk_off") parts.push("宏观收水,整体压制");
   if (riskFlags.length) parts.push(`风险:${riskFlags.length} 项`);
   return parts.join(" · ");
 }
 
-function buildGuidanceRow(target, layerSignals, regime) {
+function computeMomentumFactor(metrics) {
+  const terms = [
+    ["px24hPct", 0.5, metricNumber(metrics, "px24hPct")],
+    ["px6hPct", 0.3, metricNumber(metrics, "px6hPct")],
+    ["px1hPct", 0.2, metricNumber(metrics, "px1hPct")],
+  ].filter(([, , value]) => value !== null);
+  if (!terms.length) return { skipped: "动量字段缺失" };
+
+  const weightSum = terms.reduce((sum, [, weight]) => sum + weight, 0);
+  const weighted = terms.reduce((sum, [, weight, value]) => sum + value * (weight / weightSum), 0);
+  const score = clamp(Math.tanh(weighted / 20), -1, 1);
+  const raw = terms.map(([key, , value]) => `${key}=${signed(value, 2)}%`).join("、");
+  return {
+    key: "momentum",
+    label: "标的动量",
+    score,
+    detail: `标的动量按可用周期重归一计算，${raw}，合成 ${signed(weighted, 2)}%。`,
+  };
+}
+
+function computeFlowFactor(metrics) {
+  const buys = metricNumber(metrics, "buys24h");
+  const sells = metricNumber(metrics, "sells24h");
+  if (buys === null || sells === null) return { skipped: "资金流字段缺失" };
+
+  const sample = buys + sells;
+  if (sample < 50) return { skipped: "资金流样本不足" };
+
+  const imb = sample === 0 ? 0 : (buys - sells) / sample;
+  return {
+    key: "flow",
+    label: "买卖失衡",
+    score: clamp(imb * 2, -1, 1),
+    imb,
+    sample,
+    detail: `24h 买卖笔数 ${round(buys, 0)}/${round(sells, 0)}，失衡度 ${signed(imb, 3)}。`,
+  };
+}
+
+function computeTurnoverFactor(metrics) {
+  const vol24hUsd = metricNumber(metrics, "vol24hUsd");
+  const liqUsd = metricNumber(metrics, "liqUsd");
+  if (vol24hUsd === null || liqUsd === null) return { skipped: "量价流动性字段缺失" };
+  if (liqUsd <= 0 || vol24hUsd < 0) return { skipped: "量价流动性字段无效" };
+
+  const turnover = vol24hUsd / liqUsd;
+  const score = turnover <= 0 ? 0 : clamp(Math.log10(turnover), 0, 1);
+  return {
+    key: "turnover",
+    label: "成交/流动性",
+    score,
+    turnover,
+    detail: `24h 成交额 ${round(vol24hUsd, 0)} 美元、流动性 ${round(liqUsd, 0)} 美元，换手 ${round(turnover, 2)}x。`,
+  };
+}
+
+function computeAssetFactors(metrics) {
+  if (!metrics || typeof metrics !== "object") {
+    return { points: 0, factors: [], notes: ["标的级数据缺失"] };
+  }
+
+  const evaluated = [
+    [ASSET_FACTOR_WEIGHTS.momentum, computeMomentumFactor(metrics)],
+    [ASSET_FACTOR_WEIGHTS.flow, computeFlowFactor(metrics)],
+    [ASSET_FACTOR_WEIGHTS.turnover, computeTurnoverFactor(metrics)],
+  ];
+  const available = evaluated.filter(([, factor]) => factor.key);
+  const skipped = evaluated.map(([, factor]) => factor.skipped).filter(Boolean);
+  if (!available.length) return { points: 0, factors: [], notes: ["标的级数据缺失", ...skipped] };
+
+  const weightSum = available.reduce((sum, [weight]) => sum + weight, 0);
+  let points = 0;
+  const factors = available.map(([weight, factor]) => {
+    const pts = factor.score * (weight / weightSum) * 100 * 0.4;
+    points += pts;
+    return {
+      key: factor.key,
+      label: factor.label,
+      score: round(factor.score, 3),
+      pts: round(pts, 1),
+      detail: factor.detail,
+    };
+  });
+
+  return {
+    points,
+    factors,
+    notes: skipped,
+  };
+}
+
+function chainHeatScore(appRevenueHeat, chainTag) {
+  if (!chainTag || !Array.isArray(appRevenueHeat?.byChain)) return null;
+  const chain = appRevenueHeat.byChain.find((item) => item?.chain === chainTag);
+  if (!chain || chain.dataQuality === "missing") return null;
+
+  let weighted = 0;
+  let weightSum = 0;
+  for (const app of chain.topApps ?? []) {
+    const direction = app?.direction === "heating" ? 1 : app?.direction === "cooling" ? -1 : 0;
+    const momentum = finiteNumber(app?.momentum);
+    if (!direction || momentum === null) continue;
+    const share = finiteNumber(app?.share);
+    const revenue = finiteNumber(app?.revenue24h);
+    const weight = share !== null && share > 0 ? share : revenue !== null && revenue > 0 ? revenue : 1;
+    weighted += direction * clamp(Math.abs(momentum), 0, 1) * weight;
+    weightSum += weight;
+  }
+  if (weightSum <= 0) return null;
+
+  return {
+    score: clamp(weighted / weightSum, -1, 1),
+    label: chain.label ?? chain.chain ?? chainTag,
+  };
+}
+
+function buildGuidanceRow(target, layerSignals, regime, appRevenueHeat) {
   const tailwindLayers = [];
   const headwindLayers = [];
   const riskFlags = [];
@@ -102,30 +244,41 @@ function buildGuidanceRow(target, layerSignals, regime) {
   let launchpadTailwind = false;
 
   const add = (bucket, layer, reason, pts) => bucket.push({ layer, reason, pts: round(pts, 3) });
+  const addHeadwind = (layer, reason, pts) => headwindLayers.push({ layer, reason, pts: round(pts, 3) });
 
   // L2 chain
   const chainComp = findComponent(layerSignals.chain, "chain", target.chainTag);
   if (chainComp && chainComp.dataQuality !== "missing") {
     ridden.push(chainComp.dataQuality);
-    const pts =
-      (WEIGHTS.chain * (Number(chainComp.strength) || 0)) / 100 * confFactor(layerSignals.chain.confidence);
+    const pts = weightedLayerPoints(WEIGHTS.chain, chainComp.strength, layerSignals.chain.confidence);
     if (chainComp.direction === "inflow") { rawT += pts; add(tailwindLayers, "chain", `${chainComp.label ?? target.chainTag} 链上资金净流入`, pts); }
-    else if (chainComp.direction === "outflow") { rawH += pts; headwindLayers.push({ layer: "chain", reason: `${chainComp.label ?? target.chainTag} 链上资金净流出` }); }
+    else if (chainComp.direction === "outflow") { rawH += pts; addHeadwind("chain", `${chainComp.label ?? target.chainTag} 链上资金净流出`, pts); }
+  }
+
+  const heat = chainHeatScore(appRevenueHeat, target.chainTag);
+  if (heat && heat.score !== 0) {
+    const pts = Math.abs(heat.score) * 0.05;
+    if (heat.score > 0) {
+      rawT += pts;
+      add(tailwindLayers, "链活动热度", `${heat.label} 协议收入动量升温`, pts);
+    } else {
+      rawH += pts;
+      addHeadwind("链活动热度", `${heat.label} 协议收入动量降温`, pts);
+    }
   }
 
   // L3 launchpad
   const lpComp = findComponent(layerSignals.launchpad, "launchpad", target.launchpadTag);
   if (lpComp && lpComp.dataQuality !== "missing") {
     ridden.push(lpComp.dataQuality);
-    const pts =
-      (WEIGHTS.launchpad * (Number(lpComp.strength) || 0)) / 100 * confFactor(layerSignals.launchpad.confidence);
+    const pts = weightedLayerPoints(WEIGHTS.launchpad, lpComp.strength, layerSignals.launchpad.confidence);
     if (lpComp.direction === "heating") {
       rawT += pts;
       add(tailwindLayers, "launchpad", `${lpComp.label ?? target.launchpadTag} 发射台资金升温`, pts);
       if (layerSignals.launchpad.confidence !== "low") launchpadTailwind = true;
     } else if (lpComp.direction === "cooling") {
       rawH += pts;
-      headwindLayers.push({ layer: "launchpad", reason: `${lpComp.label ?? target.launchpadTag} 发射台降温` });
+      addHeadwind("launchpad", `${lpComp.label ?? target.launchpadTag} 发射台降温`, pts);
     }
   }
 
@@ -133,29 +286,49 @@ function buildGuidanceRow(target, layerSignals, regime) {
   const narrComp = findComponent(layerSignals.narrative, "sector", target.sectorTag);
   if (narrComp && narrComp.dataQuality !== "missing") {
     ridden.push(narrComp.dataQuality);
-    const pts =
-      (WEIGHTS.narrative * (Number(narrComp.strength) || 0)) / 100 * confFactor(layerSignals.narrative.confidence);
+    const pts = weightedLayerPoints(WEIGHTS.narrative, narrComp.strength, layerSignals.narrative.confidence);
     if (POSITIVE.has(narrComp.direction)) { rawT += pts; add(tailwindLayers, "narrative", `${narrComp.label ?? target.sectorTag} 叙事轮入`, pts); }
-    else if (NEGATIVE.has(narrComp.direction)) { rawH += pts; headwindLayers.push({ layer: "narrative", reason: `${narrComp.label ?? target.sectorTag} 叙事轮出` }); }
+    else if (NEGATIVE.has(narrComp.direction)) { rawH += pts; addHeadwind("narrative", `${narrComp.label ?? target.sectorTag} 叙事轮出`, pts); }
   }
 
   // L4 DEX<->CEX (signal-level; direction meaning depends on target type)
   const dx = layerSignals.dexCex;
   if (dx && dx.dataQuality !== "missing") {
     ridden.push(dx.dataQuality);
-    const pts = (WEIGHTS.dexCex * (Number(dx.strength) || 0)) / 100 * confFactor(dx.confidence);
+    const pts = weightedLayerPoints(WEIGHTS.dexCex, dx.strength, dx.confidence);
     if (target.type === "onchain_spot") {
       if (dx.direction === "to_spot") { rawT += pts; add(tailwindLayers, "dexCex", "资金回流链上现货", pts); }
-      else if (dx.direction === "to_perp") { rawH += pts; headwindLayers.push({ layer: "dexCex", reason: "资金偏向 CEX 合约,现货承接弱" }); }
+      else if (dx.direction === "to_perp") { rawH += pts; addHeadwind("dexCex", "资金偏向 CEX 合约,现货承接弱", pts); }
     } else if (target.type === "cex_perp") {
       if (dx.direction === "to_perp") { rawT += pts; add(tailwindLayers, "dexCex", "资金涌向合约", pts); }
-      else if (dx.direction === "to_spot") { rawH += pts; headwindLayers.push({ layer: "dexCex", reason: "资金偏现货,合约动能弱" }); }
+      else if (dx.direction === "to_spot") { rawH += pts; addHeadwind("dexCex", "资金偏现货,合约动能弱", pts); }
       if (dx.crowding === "high") riskFlags.push("合约持仓拥挤(funding/OI 偏高),建议降杠杆/防挤");
     }
   }
 
   const mult = REGIME_MULT[regime] ?? 1;
-  const conviction = clamp((rawT - rawH) * 100 * mult, 0, 100);
+  const layerPts = (rawT - rawH) * 100 * mult * 0.6;
+  const asset = computeAssetFactors(target.metrics);
+  const conviction = clamp(layerPts + asset.points, 0, 100);
+  const factors = [
+    {
+      key: "layers",
+      label: "五层信号",
+      score: round(layerPts, 1),
+      pts: round(layerPts, 1),
+      detail: `层信号 rawT=${round(rawT, 3)}、rawH=${round(rawH, 3)}，宏观系数 ${round(mult, 2)}，按 60% 计入。`,
+    },
+    ...asset.factors,
+  ];
+
+  const liqUsd = metricNumber(target.metrics, "liqUsd");
+  if (liqUsd !== null && liqUsd < 300_000) riskFlags.push("流动性薄(<$30万)，出场滑点风险");
+  const px24hPct = metricNumber(target.metrics, "px24hPct");
+  const flowFactor = computeFlowFactor(target.metrics);
+  if (flowFactor.key && flowFactor.imb > 0.75 && px24hPct !== null && px24hPct > 50) {
+    riskFlags.push("单边追高拥挤");
+  }
+
   let tier = tierFromConviction(conviction);
 
   // user's flagship rule: heating launchpad in non-risk_off floors the tier at 试探(probe)
@@ -182,9 +355,10 @@ function buildGuidanceRow(target, layerSignals, regime) {
     tailwindLayers,
     headwindLayers,
     riskFlags,
-    rationale: buildRationale(tier, tailwindLayers, headwindLayers, riskFlags, regime),
+    rationale: buildRationale(tier, tailwindLayers, headwindLayers, riskFlags, regime, asset.notes),
     chainTag: target.chainTag ?? null,
     metrics: target.metrics ?? null,
+    factors,
     dataQuality,
   };
 }
@@ -192,7 +366,7 @@ function buildGuidanceRow(target, layerSignals, regime) {
 export function computePositionGuidance(
   layerSignals = {},
   watchlist = [],
-  { regime = mapMacroToRegime(layerSignals.macro) } = {},
+  { regime = mapMacroToRegime(layerSignals.macro), appRevenueHeat = null } = {},
 ) {
-  return (watchlist ?? []).map((target) => buildGuidanceRow(target, layerSignals, regime));
+  return (watchlist ?? []).map((target) => buildGuidanceRow(target, layerSignals, regime, appRevenueHeat));
 }

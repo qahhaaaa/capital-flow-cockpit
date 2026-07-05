@@ -117,3 +117,186 @@ test("guidance: a target whose layers have no data is conservative, not confiden
   assert.equal(guidance[0].tier, TIER.FLAT);
   assert.equal(guidance[0].dataQuality, "missing");
 });
+
+test("guidance v2: full positive metrics lift conviction above equivalent null metrics", () => {
+  const target = { target: "HOT", type: "onchain_spot", chainTag: "solana" };
+  const baseline = computePositionGuidance(
+    { chain: chainInflow },
+    [{ ...target, metrics: null }],
+    { regime: "neutral" },
+  )[0];
+  const withMetrics = computePositionGuidance(
+    { chain: chainInflow },
+    [{
+      ...target,
+      metrics: {
+        px1hPct: 8,
+        px6hPct: 20,
+        px24hPct: 60,
+        vol24hUsd: 6_000_000,
+        liqUsd: 600_000,
+        buys24h: 1_200,
+        sells24h: 300,
+      },
+    }],
+    { regime: "neutral" },
+  )[0];
+
+  assert.ok(withMetrics.conviction > baseline.conviction);
+  assert.ok(withMetrics.factors.some((factor) => factor.key === "momentum" && factor.pts > 0));
+  assert.ok(withMetrics.factors.some((factor) => factor.key === "flow" && factor.pts > 0));
+  assert.ok(withMetrics.factors.some((factor) => factor.key === "turnover" && factor.pts > 0));
+});
+
+test("guidance v2: negative momentum pulls conviction below null-metrics baseline", () => {
+  const target = { target: "COLD", type: "onchain_spot", chainTag: "solana" };
+  const baseline = computePositionGuidance(
+    { chain: chainInflow },
+    [{ ...target, metrics: null }],
+    { regime: "neutral" },
+  )[0];
+  const withMetrics = computePositionGuidance(
+    { chain: chainInflow },
+    [{
+      ...target,
+      metrics: {
+        px1hPct: -8,
+        px6hPct: -20,
+        px24hPct: -60,
+      },
+    }],
+    { regime: "neutral" },
+  )[0];
+
+  assert.ok(withMetrics.conviction < baseline.conviction);
+  assert.ok(withMetrics.factors.some((factor) => factor.key === "momentum" && factor.pts < 0));
+});
+
+test("guidance v2: small-sample fund flow is skipped instead of counted as zero", () => {
+  const row = computePositionGuidance(
+    { chain: chainInflow },
+    [{
+      target: "THIN-SAMPLE",
+      type: "onchain_spot",
+      chainTag: "solana",
+      metrics: {
+        px1hPct: 4,
+        px6hPct: 8,
+        px24hPct: 16,
+        vol24hUsd: 1_000_000,
+        liqUsd: 500_000,
+        buys24h: 20,
+        sells24h: 10,
+      },
+    }],
+    { regime: "neutral" },
+  )[0];
+
+  assert.equal(row.factors.some((factor) => factor.key === "flow"), false);
+  assert.ok(row.rationale.includes("资金流样本不足"));
+});
+
+test("guidance v2: new metric risk flags trigger and downgrade one tier per risk", () => {
+  const strongNarrative = {
+    layer: "narrative",
+    direction: "rotate_in",
+    strength: 100,
+    confidence: "high",
+    dataQuality: "ok",
+    components: [{ sector: "meme", direction: "rotate_in", strength: 100, dataQuality: "ok" }],
+  };
+  const spotDexCex = {
+    layer: "dexCex",
+    direction: "to_spot",
+    strength: 100,
+    confidence: "high",
+    dataQuality: "ok",
+  };
+  const row = computePositionGuidance(
+    { chain: chainInflow, launchpad: launchpadHeating, narrative: strongNarrative, dexCex: spotDexCex },
+    [{
+      target: "CROWDED",
+      type: "onchain_spot",
+      chainTag: "solana",
+      launchpadTag: "pumpfun",
+      sectorTag: "meme",
+      metrics: {
+        px1hPct: 30,
+        px6hPct: 70,
+        px24hPct: 120,
+        vol24hUsd: 4_000_000,
+        liqUsd: 200_000,
+        buys24h: 2_000,
+        sells24h: 200,
+      },
+    }],
+    { regime: "risk_on" },
+  )[0];
+
+  assert.ok(row.riskFlags.includes("流动性薄(<$30万)，出场滑点风险"));
+  assert.ok(row.riskFlags.includes("单边追高拥挤"));
+  assert.equal(row.tier, TIER.PROBE);
+});
+
+test("guidance v2: cool-down cap applies last after new factor math and risk tier-downs", () => {
+  const row = computePositionGuidance(
+    { chain: chainInflow, launchpad: launchpadHeating },
+    [{
+      target: "HOT-RISK-OFF",
+      type: "onchain_spot",
+      chainTag: "solana",
+      launchpadTag: "pumpfun",
+      metrics: {
+        px1hPct: 50,
+        px6hPct: 100,
+        px24hPct: 200,
+        vol24hUsd: 10_000_000,
+        liqUsd: 2_000_000,
+        buys24h: 5_000,
+        sells24h: 100,
+      },
+    }],
+    { regime: "risk_off" },
+  )[0];
+
+  assert.ok(row.conviction >= 50);
+  assert.equal(row.tier, TIER.PROBE);
+});
+
+test("guidance v2: missing metrics keeps roughly old layer signal scaled to 60 percent", () => {
+  const row = computePositionGuidance(
+    { chain: chainInflow },
+    [{ target: "NO-METRICS", type: "onchain_spot", chainTag: "solana" }],
+    { regime: "neutral" },
+  )[0];
+
+  assert.equal(row.conviction, 14);
+  assert.ok(row.rationale.includes("标的级数据缺失"));
+  assert.deepEqual(row.factors.map((factor) => factor.key), ["layers"]);
+});
+
+test("guidance v2: app revenue heat enters layer signal for matching chain", () => {
+  const base = computePositionGuidance(
+    { chain: chainInflow },
+    [{ target: "HEAT", type: "onchain_spot", chainTag: "solana", metrics: null }],
+    { regime: "neutral" },
+  )[0];
+  const heated = computePositionGuidance(
+    { chain: chainInflow },
+    [{ target: "HEAT", type: "onchain_spot", chainTag: "solana", metrics: null }],
+    {
+      regime: "neutral",
+      appRevenueHeat: {
+        byChain: [{
+          chain: "solana",
+          label: "SOL",
+          dataQuality: "ok",
+          topApps: [{ protocol: "Hot App", share: 100, momentum: 1, direction: "heating" }],
+        }],
+      },
+    },
+  )[0];
+
+  assert.ok(heated.conviction > base.conviction);
+  assert.ok(heated.tailwindLayers.some((item) => item.layer === "链活动热度"));
+});
