@@ -81,3 +81,43 @@ test("notifyTelegram skips silently without secrets and never touches the networ
   assert.deepEqual(result, { sent: false, reason: "no-secrets" });
   assert.equal(fetched, 0);
 });
+
+test("diffCockpitState: membership churn alone does not create push lines", () => {
+  const prev = snapshot({ guidance: [{ target: "WIF", tier: "probe", tierLabel: "试探" }] });
+  const next = snapshot({ guidance: [{ target: "BONK", tier: "probe", tierLabel: "试探" }] });
+
+  assert.deepEqual(diffCockpitState(prev, next), []);
+});
+
+test("diffCockpitState: membership churn is summarized only when another real change exists", () => {
+  const prev = snapshot({ guidance: [{ target: "WIF", tier: "probe", tierLabel: "试探" }] });
+  const next = snapshot({
+    regime: "risk_off",
+    guidance: [
+      { target: "WIF", tier: "flat", tierLabel: "空仓" },
+      { target: "BONK", tier: "probe", tierLabel: "试探" },
+    ],
+  });
+
+  const lines = diffCockpitState(prev, next);
+  assert.ok(lines.some((line) => line.includes("WIF 仓位档: 试探 → 空仓")));
+  assert.equal(lines.at(-1), "标的轮换: +1/-0");
+  assert.ok(!lines.some((line) => line.includes("新增标的")));
+});
+
+test("diffCockpitState: reorder alone (hourly trending re-rank) stays silent — no rank spam", () => {
+  const prev = snapshot({
+    guidance: [
+      { target: "WIF", tier: "probe", tierLabel: "试探" },
+      { target: "BONK", tier: "probe", tierLabel: "试探" },
+    ],
+  });
+  const next = snapshot({
+    guidance: [
+      { target: "BONK", tier: "probe", tierLabel: "试探" },
+      { target: "WIF", tier: "probe", tierLabel: "试探" },
+    ],
+  });
+
+  assert.deepEqual(diffCockpitState(prev, next), []);
+});

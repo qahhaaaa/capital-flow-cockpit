@@ -183,6 +183,8 @@ function buildGuidanceRow(target, layerSignals, regime) {
     headwindLayers,
     riskFlags,
     rationale: buildRationale(tier, tailwindLayers, headwindLayers, riskFlags, regime),
+    chainTag: target.chainTag ?? null,
+    metrics: target.metrics ?? null,
     dataQuality,
   };
 }

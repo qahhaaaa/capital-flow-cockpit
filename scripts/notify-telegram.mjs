@@ -43,17 +43,23 @@ export function diffCockpitState(prev, next) {
   // from an older/newer schema may carry these keys with a non-array shape, and a diff
   // crash here would sink the whole collection run (this step runs before the data commit).
   const rows = (value) => (Array.isArray(value) ? value : []);
+  // 动态 watchlist 每小时轮换成员/重排名次——两者都不构成推送触发(否则每小时刷屏);
+  // 只有"两边都存在的标的"发生档位变化才是真状态变化。成员增减仅在存在其它真实
+  // 变化时,以一行汇总附带说明。
   const prevRows = new Map(rows(prev.guidance).map((row) => [row.target, row]));
+  let added = 0;
   for (const row of rows(next.guidance)) {
     const before = prevRows.get(row.target);
     if (!before) {
-      lines.push(`新增标的 ${row.target}: ${tierText(row)}`);
-    } else if (before.tier !== row.tier) {
+      added += 1;
+      continue;
+    }
+    if (before.tier !== row.tier) {
       lines.push(`${row.target} 仓位档: ${tierText(before)} → ${tierText(row)}`);
     }
     prevRows.delete(row.target);
   }
-  for (const gone of prevRows.keys()) lines.push(`标的移除: ${gone}`);
+  const removed = prevRows.size;
 
   // Rotation edges appear/disappear.
   const prevEdges = new Set(rows(prev.flowState?.rotationEdges).map(edgeKey));
@@ -75,6 +81,11 @@ export function diffCockpitState(prev, next) {
   const nextTide = next.stableTide?.direction;
   if (prevTide && nextTide && prevTide !== nextTide) {
     lines.push(`稳定币总量潮汐: ${prevTide} → ${nextTide}`);
+  }
+
+  // Membership churn is context, never a trigger: appended only when real changes exist.
+  if ((added > 0 || removed > 0) && lines.length > 0) {
+    lines.push(`标的轮换: +${added}/-${removed}`);
   }
 
   return lines;

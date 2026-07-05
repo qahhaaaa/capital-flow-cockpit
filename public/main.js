@@ -191,7 +191,7 @@ const ppSigned = (v, digits = 2) => (v === null || v === undefined ? "—" : `${
 const tableScroll = (table) => `<div class="table-scroll">${table}</div>`;
 const HOW = {
   macro: "净流动性=美联储资产负债表−TGA−RRP;上行=放水利好风险资产,收水时引擎自动压制所有仓位建议",
-  chain: "份额变化(pp)>0=稳定币资金净迁入该链;拐点=每步都小但方向持续的慢漂移警报;ok 需≥24h 积累",
+  chain: "份额Δ=存量迁移(稳定币);DEX量动量=流量热度;费用动量=链上活动;方向由三者加权(0.5/0.3/0.2),轮动边需份额+DEX量双确认;拐点=慢漂移警报",
   launchpad: "24h 收入=打新热度的真金白银;动量>0=升温;份额=占五台总收入比;龙头=当前打新主战场",
   dexCex: "funding>0=多头付费=资金挤在合约(过热防挤仓);偏现货=承接型资金更健康;来源 OKX,451 时自动切 Hyperliquid(无现货腿标 partial)",
   narrative: "板块 7d TVL 相对强弱=叙事资金轮动;热门搜索仅是注意力代理,可被操纵,不入引擎",
@@ -392,20 +392,24 @@ function macroPanel(d) {
 
 function chainPanel(d) {
   const comps = d.layers?.chain?.components ?? [];
+  const dexCell = (v) => (v === null || v === undefined ? "—" : `<span class="${v > 3 ? "up" : v < -3 ? "down" : "flat"}">${pctSigned(v)}</span>`);
+  const feeCell = (v) => (v === null || v === undefined ? "—" : `<span class="${v > 0.05 ? "up" : v < -0.05 ? "down" : "flat"}">${v > 0 ? "+" : ""}${(Number(v) * 100).toFixed(0)}%</span>`);
   const rows = comps.length
     ? comps.map((c) => `<tr>
         <td>${esc(c.label ?? c.chain)}</td>
         <td class="num">${pct(c.shareNow)}</td>
         <td class="num ${dirClass(c.direction)}">${c.shareDeltaPp === null || c.shareDeltaPp === undefined ? "—" : `${c.shareDeltaPp > 0 ? "+" : ""}${Number(c.shareDeltaPp).toFixed(3)}pp`}</td>
+        <td class="num">${dexCell(c.dexVolChange1dPct)}</td>
+        <td class="num">${feeCell(c.feesMomentum)}</td>
         <td class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</td>
         <td>${qBadge(c.dataQuality)}</td>
       </tr>`).join("")
-    : `<tr><td colspan="5" class="muted">链间层无数据(provider 失败或未采集)。</td></tr>`;
+    : `<tr><td colspan="7" class="muted">链间层无数据(provider 失败或未采集)。</td></tr>`;
   return `<div class="panel">
-    <h2>L2 链间资金流动 · 稳定币份额</h2>
+    <h2>L2 链间资金流动 · 份额+DEX量+费用</h2>
     <div class="how">${esc(HOW.chain)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>链</th><th class="num">占全局份额</th><th class="num">变化</th><th>方向</th><th>数据</th></tr></thead>
+      <thead><tr><th>链</th><th class="num">份额</th><th class="num">份额Δ</th><th class="num">DEX量1d</th><th class="num">费用动量</th><th>方向</th><th>数据</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`)}
   </div>`;

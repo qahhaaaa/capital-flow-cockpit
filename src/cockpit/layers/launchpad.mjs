@@ -82,14 +82,24 @@ export function computeLaunchpadSignal(perLaunchpad, { launchpads = LAUNCHPADS }
   const hottest = [...movers].sort((a, b) => b.momentum - a.momentum)[0];
   const coldest = [...movers].sort((a, b) => a.momentum - b.momentum)[0];
 
+  // 体量门槛:两端 24h 收入 ≥ $50k 且份额 ≥ 1% 才有资格成边;强度再按小端份额缩放。
+  // 防止微量台子靠动量幻觉画出强边(实测踩过:moonshot $4k → believe $3 强度 100 的鬼边)。
+  const EDGE_MIN_REVENUE_USD = 50_000;
+  const EDGE_MIN_SHARE_PCT = 1;
+  const edgeEligible = (c) =>
+    Number.isFinite(c?.revenue24h) && c.revenue24h >= EDGE_MIN_REVENUE_USD &&
+    Number.isFinite(c?.share) && c.share >= EDGE_MIN_SHARE_PCT;
+
   const rotationEdges = [];
   if (hottest && coldest && hottest.launchpad !== coldest.launchpad
-      && hottest.momentum > MOMENTUM_EPS && coldest.momentum < -MOMENTUM_EPS) {
+      && hottest.momentum > MOMENTUM_EPS && coldest.momentum < -MOMENTUM_EPS
+      && edgeEligible(hottest) && edgeEligible(coldest)) {
+    const sizeScale = clamp(Math.min(hottest.share, coldest.share) / 10, 0, 1);
     rotationEdges.push({
       from: coldest.launchpad,
       to: hottest.launchpad,
       type: "launchpad",
-      strength: clamp(round((hottest.momentum - coldest.momentum) * 50, 0)),
+      strength: clamp(round((hottest.momentum - coldest.momentum) * 50 * sizeScale, 0)),
       confidence: hottest.dataQuality === "ok" && coldest.dataQuality === "ok" ? "high" : "medium",
     });
   }

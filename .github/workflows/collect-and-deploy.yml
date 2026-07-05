@@ -119,6 +119,13 @@ jobs:
         with:
           path: public
 
+      # Pages 服务端偶发 "Deployment failed, try again later"(与代码无关,多次实测:测试/采集/
+      # 构件全成功、仅此步挂)→ 失败自动重试一次,二次仍失败才判 run 失败。
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Retry deploy once (Pages service flake)
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4

@@ -22,6 +22,8 @@ import { loadCategoriesSnapshot } from "../src/cockpit/providers/narrative.mjs";
 import { loadMindshareSnapshot } from "../src/cockpit/providers/mindshare.mjs";
 import { loadOkxDerivativesSnapshot } from "../src/cockpit/providers/dexcex.mjs";
 import { loadHyperliquidDerivativesSnapshot } from "../src/cockpit/providers/hyperliquid.mjs";
+import { loadDynamicWatchlist } from "../src/cockpit/providers/watchlist.mjs";
+import { loadChainDexVolumeSnapshot } from "../src/cockpit/providers/chain-volume.mjs";
 
 const outputPath = resolve("public/data/cockpit.json");
 const historyPath = resolve("public/data/cockpit-history.json");
@@ -50,6 +52,8 @@ export async function collectCockpit({
   loadMindshare = loadMindshareSnapshot,
   loadDexCex = loadOkxDerivativesSnapshot,
   loadDexCexFallback = loadHyperliquidDerivativesSnapshot,
+  loadWatchlist = loadDynamicWatchlist,
+  loadChainVolume = loadChainDexVolumeSnapshot,
   watchlist = DEFAULT_WATCHLIST,
   now = new Date().toISOString(),
 } = {}) {
@@ -78,10 +82,36 @@ export async function collectCockpit({
     sourceStatus.push({ source: "defillama-stablecoinchains", status: "error", message: error.message });
   }
 
-  // Time-anchored share series (cadence-independent deltas) + global-total tide side-channel.
-  // Both read from whatever history holds, so a failed fetch this run degrades, never zeroes.
-  layerSignals.chain = computeChainFlowSignal(buildShareSeriesWithTs(history));
+  // Tide reads from whatever history holds, so a failed fetch this run degrades, never zeroes.
+  // (chain signal computed further down, after DEX-volume + chain-fees components are loaded)
   const stableTide = computeStableTideSignal(buildTideSeries(history));
+
+  // 动态标的:GT trending 每链 top3;单链失败沿用上一快照该链标的(metrics 置 null),
+  // 全部失败且无旧快照才退回占位 DEFAULT_WATCHLIST。成员轮换不触发 TG 推送(notify 已防噪)。
+  let activeWatchlist = watchlist;
+  try {
+    const dyn = await loadWatchlist();
+    const prevSnapshot = await readJson(outputPath, null);
+    const prevRows = Array.isArray(prevSnapshot?.guidance) ? prevSnapshot.guidance : [];
+    const entries = [];
+    for (const [chainId, fresh] of Object.entries(dyn.perChain)) {
+      if (fresh.length) {
+        entries.push(...fresh);
+        continue;
+      }
+      for (const row of prevRows.filter((r) => r.chainTag === chainId).slice(0, 3)) {
+        entries.push({ target: row.target, type: row.type ?? "onchain_spot", chainTag: chainId, launchpadTag: null, metrics: null });
+      }
+    }
+    if (entries.length) activeWatchlist = entries;
+    sourceStatus.push({
+      source: "geckoterminal-trending",
+      status: dyn.errors.length === 0 ? "ok" : entries.length ? "partial" : "error",
+      ...(dyn.errors.length ? { message: dyn.errors.map((e) => `${e.chain}: ${e.message}`).join("; ").slice(0, 200) } : {}),
+    });
+  } catch (error) {
+    sourceStatus.push({ source: "geckoterminal-trending", status: "error", message: error.message });
+  }
 
   try {
     const launchpad = await loadLaunchpad();
@@ -106,6 +136,26 @@ export async function collectCockpit({
     appRevenueHeat = computeAppRevenueSignal([]);
     sourceStatus.push({ source: "defillama-chain-fees", status: "error", message: error.message });
   }
+
+  // 每链 DEX 量动量(链间信号第二组件);失败→undefined,链信号只用份额+费用并自动归一。
+  let dexVolume;
+  try {
+    const dv = await loadChainVolume();
+    dexVolume = dv.perChain;
+    sourceStatus.push({
+      source: "defillama-dexs",
+      status: dv.errors.length ? "partial" : "ok",
+      ...(dv.errors.length ? { message: dv.errors.map((e) => `${e.chain}: ${e.message}`).join("; ").slice(0, 200) } : {}),
+    });
+  } catch (error) {
+    sourceStatus.push({ source: "defillama-dexs", status: "error", message: error.message });
+  }
+
+  // 链间信号:份额Δ(0.5)+ DEX 量动量(0.3)+ 链费用动量(0.2),缺失组件不计入并归一化权重。
+  layerSignals.chain = computeChainFlowSignal(buildShareSeriesWithTs(history), {
+    dexVolume,
+    chainFees: appRevenueHeat?.byChain,
+  });
 
   let mindshare = null;
   try {
@@ -146,7 +196,7 @@ export async function collectCockpit({
 
   const cockpit = assembleCockpit({
     layerSignals,
-    watchlist,
+    watchlist: activeWatchlist,
     meta: { generatedAt: now, historyPoints: history.length },
     sourceStatus,
     appRevenueHeat,

@@ -9,6 +9,8 @@ import { cleanWindow, cusum, percentileRank, resampleByTime } from "../stats.mjs
 
 // Deadband (percentage points of global share) below which a move is "flat" noise.
 const FLAT_EPS_PP = 0.02;
+const DEX_MOMENTUM_DEADBAND_PCT = 3;
+const FEE_MOMENTUM_EPS = 0.05;
 
 // Delta anchor window. FLAT_EPS_PP was calibrated against one 4h collection step; with the
 // cadence now 1h, a per-adjacent-point delta would shrink ~4x and drown in that deadband.
@@ -20,9 +22,14 @@ const OK_MIN_SPAN_MS = 24 * 60 * 60 * 1000;
 // older alarms are history, not "an inflection now" — suppressed instead of latched forever.
 const INFLECTION_FRESH_STEPS = 6;
 
+function finite(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function peggedUsd(row) {
-  const value = Number(row?.totalCirculatingUSD?.peggedUSD);
-  return Number.isFinite(value) ? value : null;
+  return finite(row?.totalCirculatingUSD?.peggedUSD);
 }
 
 // Raw stablecoinchains feed -> per-configured-chain stablecoin USD + share of global supply.
@@ -78,6 +85,80 @@ export function anchoredDeltas(sharePoints, { anchorMs = ANCHOR_MS } = {}) {
 
 function edgeConfidence(inflow, outflow) {
   return inflow.dataQuality === "ok" && outflow.dataQuality === "ok" ? "high" : "medium";
+}
+
+function signDirection(value, { deadband }) {
+  if (value === null) return null;
+  if (value > deadband) return "inflow";
+  if (value < -deadband) return "outflow";
+  return "flat";
+}
+
+function scoreFromDirection(direction, magnitude) {
+  if (direction === null) return null;
+  if (direction === "flat" || direction === "unknown") return 0;
+  const sign = direction === "inflow" ? 1 : -1;
+  return sign * clamp(Math.abs(magnitude), 0, 1);
+}
+
+function byChainMap(source) {
+  const rows = Array.isArray(source?.perChain) ? source.perChain : Array.isArray(source) ? source : [];
+  return new Map(rows.map((row) => [row.chain, row]));
+}
+
+function feesByChainMap(chainFees) {
+  const rows = Array.isArray(chainFees?.byChain) ? chainFees.byChain : Array.isArray(chainFees) ? chainFees : [];
+  return new Map(rows.map((row) => [row.chain, row]));
+}
+
+function feeMomentumForChain(entry) {
+  const apps = Array.isArray(entry?.topApps) ? entry.topApps : [];
+  let weighted = 0;
+  let weightSum = 0;
+  for (const app of apps) {
+    const momentum = finite(app?.momentum);
+    const share = finite(app?.share);
+    if (momentum === null || share === null) continue;
+    weighted += momentum * share;
+    weightSum += share;
+  }
+  return weightSum > 0 ? round(weighted / weightSum, 3) : null;
+}
+
+function applyEnhancedDirection(component, { dexVolumeByChain, feesByChain }) {
+  const dexRow = dexVolumeByChain.get(component.chain);
+  const dexVolChange1dPct = finite(dexRow?.dexVolChange1dPct);
+  const dexDirection = signDirection(dexVolChange1dPct, { deadband: DEX_MOMENTUM_DEADBAND_PCT });
+  const dexScore = dexVolChange1dPct === null
+    ? null
+    : scoreFromDirection(dexDirection, Math.min(Math.abs(dexVolChange1dPct) / 100, 1));
+
+  const feesMomentum = feeMomentumForChain(feesByChain.get(component.chain));
+  const feeDirection = signDirection(feesMomentum, { deadband: FEE_MOMENTUM_EPS });
+  const feeScore = feesMomentum === null ? null : scoreFromDirection(feeDirection, Math.min(Math.abs(feesMomentum), 1));
+
+  const shareScore = Number.isFinite(component.shareDeltaPp)
+    ? scoreFromDirection(component.direction, (component.strength ?? 0) / 100)
+    : null;
+  const parts = [
+    { weight: 0.5, score: shareScore },
+    { weight: 0.3, score: dexScore },
+    { weight: 0.2, score: feeScore },
+  ].filter((part) => part.score !== null);
+
+  if (parts.length === 0) return { ...component, dexVolChange1dPct, feesMomentum };
+
+  const weightSum = parts.reduce((sum, part) => sum + part.weight, 0);
+  const weightedScore = parts.reduce((sum, part) => sum + part.score * (part.weight / weightSum), 0);
+  const direction = weightedScore > 0.01 ? "inflow" : weightedScore < -0.01 ? "outflow" : "flat";
+
+  return {
+    ...component,
+    direction,
+    strength: clamp(round(Math.abs(weightedScore) * 100, 0)),
+    dexVolChange1dPct,
+    feesMomentum,
+  };
 }
 
 // Component from timestamped points (cadence-independent). `inflection` is a display-only
@@ -144,39 +225,59 @@ function componentFromPlainSeries(chain, shareSeries) {
   };
 }
 
-// Per-chain share time-series (chronological, oldest→newest) -> chain-flow LayerSignal.
-// Entries may carry `sharePoints` [{ts, share}] (time-anchored path) or a plain numeric
-// `shareSeries` (legacy adjacent-diff path). The series are assembled by the rolling-history
-// store; this function is pure.
-export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAINS } = {}) {
+function buildBaseComponents(perChainSeries, chains) {
   const byChain = new Map((perChainSeries ?? []).map((entry) => [entry.chain, entry]));
-
-  const components = chains.map((chain) => {
+  return chains.map((chain) => {
     const entry = byChain.get(chain.id);
     return Array.isArray(entry?.sharePoints)
       ? componentFromSharePoints(chain, entry.sharePoints)
       : componentFromPlainSeries(chain, entry?.shareSeries);
   });
+}
 
-  const movers = components.filter((component) => Number.isFinite(component.shareDeltaPp));
-  const inflow = [...movers].sort((a, b) => b.shareDeltaPp - a.shareDeltaPp)[0];
-  const outflow = [...movers].sort((a, b) => a.shareDeltaPp - b.shareDeltaPp)[0];
+function canBuildEnhancedEdge(inflow, outflow) {
+  const inDex = signDirection(finite(inflow.dexVolChange1dPct), { deadband: DEX_MOMENTUM_DEADBAND_PCT });
+  const outDex = signDirection(finite(outflow.dexVolChange1dPct), { deadband: DEX_MOMENTUM_DEADBAND_PCT });
+  return inDex === "inflow" && outDex === "outflow";
+}
+
+// Per-chain share time-series (chronological, oldest→newest) -> chain-flow LayerSignal.
+// Entries may carry `sharePoints` [{ts, share}] (time-anchored path) or a plain numeric
+// `shareSeries` (legacy adjacent-diff path). The series are assembled by the rolling-history
+// store; this function is pure.
+export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAINS, dexVolume, chainFees } = {}) {
+  const enhanced = dexVolume !== undefined || chainFees !== undefined;
+  const baseComponents = buildBaseComponents(perChainSeries, chains);
+  const components = enhanced
+    ? baseComponents.map((component) => applyEnhancedDirection(component, {
+        dexVolumeByChain: byChainMap(dexVolume),
+        feesByChain: feesByChainMap(chainFees),
+      }))
+    : baseComponents;
+
+  const movers = baseComponents.filter((component) => Number.isFinite(component.shareDeltaPp));
+  const inflowBase = [...movers].sort((a, b) => b.shareDeltaPp - a.shareDeltaPp)[0];
+  const outflowBase = [...movers].sort((a, b) => a.shareDeltaPp - b.shareDeltaPp)[0];
+  const byEnhancedChain = new Map(components.map((component) => [component.chain, component]));
+  const inflow = inflowBase ? byEnhancedChain.get(inflowBase.chain) : null;
+  const outflow = outflowBase ? byEnhancedChain.get(outflowBase.chain) : null;
 
   const rotationEdges = [];
   if (
-    inflow &&
-    outflow &&
-    inflow.chain !== outflow.chain &&
-    inflow.shareDeltaPp > FLAT_EPS_PP &&
-    outflow.shareDeltaPp < -FLAT_EPS_PP
+    inflowBase &&
+    outflowBase &&
+    inflowBase.chain !== outflowBase.chain &&
+    inflowBase.shareDeltaPp > FLAT_EPS_PP &&
+    outflowBase.shareDeltaPp < -FLAT_EPS_PP &&
+    (!enhanced || canBuildEnhancedEdge(inflow, outflow))
   ) {
-    const spread = inflow.shareDeltaPp - outflow.shareDeltaPp;
+    const spread = inflowBase.shareDeltaPp - outflowBase.shareDeltaPp;
     rotationEdges.push({
-      from: outflow.chain,
-      to: inflow.chain,
+      from: outflowBase.chain,
+      to: inflowBase.chain,
       type: "chain",
       strength: clamp(round(spread * 50, 1)),
-      confidence: edgeConfidence(inflow, outflow),
+      confidence: edgeConfidence(inflowBase, outflowBase),
     });
   }
 
@@ -193,12 +294,12 @@ export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAI
     direction: rotationEdges.length ? "rotating" : "stable",
     strength:
       rotationEdges[0]?.strength ??
-      (movers.length ? Math.max(...movers.map((m) => m.strength ?? 0)) : null),
+      (components.length ? Math.max(...components.map((m) => m.strength ?? 0)) : null),
     confidence,
     components,
     rotationEdges,
     drivers: rotationEdges.length
-      ? [`${outflow.label} → ${inflow.label} 稳定币份额迁移`]
+      ? [`${outflowBase.label} → ${inflowBase.label} 稳定币份额迁移`]
       : ["四链稳定币份额无显著迁移"],
     dataQuality,
   };

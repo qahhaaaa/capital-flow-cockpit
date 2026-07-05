@@ -79,3 +79,62 @@ test("chain-flow signal: short/absent history degrades confidence and never fabr
   assert.equal(sol.dataQuality, "partial"); // only 2 points
   assert.notEqual(signal.confidence, "high");
 });
+
+test("chain-flow enhancement: rotation edge requires share delta and DEX volume double confirmation", () => {
+  const series = [
+    { chain: "solana", label: "SOL", shareSeries: [4.0, 4.1, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2] },
+    { chain: "ethereum", label: "ETH 主网", shareSeries: [52, 51.8, 51.5, 51.2, 51, 50.7, 50.4, 50.0] },
+  ];
+
+  const confirmed = computeChainFlowSignal(series, {
+    dexVolume: {
+      perChain: [
+        { chain: "solana", dexVol24hUsd: 1000, dexVolChange1dPct: 12 },
+        { chain: "ethereum", dexVol24hUsd: 1000, dexVolChange1dPct: -8 },
+      ],
+    },
+  });
+  assert.equal(confirmed.rotationEdges.length, 1);
+  assert.equal(confirmed.rotationEdges[0].from, "ethereum");
+  assert.equal(confirmed.rotationEdges[0].to, "solana");
+
+  const contradicted = computeChainFlowSignal(series, {
+    dexVolume: {
+      perChain: [
+        { chain: "solana", dexVol24hUsd: 1000, dexVolChange1dPct: 12 },
+        { chain: "ethereum", dexVol24hUsd: 1000, dexVolChange1dPct: 8 },
+      ],
+    },
+  });
+  assert.equal(contradicted.rotationEdges.length, 0);
+});
+
+test("chain-flow enhancement: missing DEX component is omitted from weights, never treated as zero", () => {
+  const signal = computeChainFlowSignal(
+    [{ chain: "solana", label: "SOL", shareSeries: [4.0, 4.1, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2] }],
+    {
+      chainFees: {
+        byChain: [
+          {
+            chain: "solana",
+            topApps: [{ protocol: "App", revenue24h: 1000, revenue7d: 14000, share: 100, momentum: -1 }],
+          },
+        ],
+      },
+    },
+  );
+
+  const sol = signal.components.find((component) => component.chain === "solana");
+  assert.equal(sol.dexVolChange1dPct, null);
+  assert.equal(sol.feesMomentum, -1);
+  assert.equal(sol.direction, "inflow");
+});
+
+test("chain-flow enhancement: old call signature remains byte-compatible", () => {
+  const series = [
+    { chain: "solana", label: "SOL", shareSeries: [4.0, 4.1, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2] },
+    { chain: "ethereum", label: "ETH 主网", shareSeries: [52, 51.8, 51.5, 51.2, 51, 50.7, 50.4, 50.0] },
+  ];
+
+  assert.deepEqual(computeChainFlowSignal(series), computeChainFlowSignal(series, {}));
+});

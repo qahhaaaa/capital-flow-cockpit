@@ -47,3 +47,13 @@ test("assembleCockpit carries the stableTide side-channel through, defaulting to
   assert.equal(out.stableTide.direction, "inflow");
   assert.equal(assembleCockpit({ layerSignals }).stableTide, null);
 });
+
+test("assembleCockpit exposes watchlist metrics on guidance rows", () => {
+  const metrics = { source: "geckoterminal", priceUsd: 1.23, at: "2026-07-05T00:00:00.000Z" };
+  const out = assembleCockpit({
+    layerSignals,
+    watchlist: [{ target: "WIF", type: "onchain_spot", chainTag: "solana", metrics }],
+  });
+
+  assert.deepEqual(out.guidance[0].metrics, metrics);
+});

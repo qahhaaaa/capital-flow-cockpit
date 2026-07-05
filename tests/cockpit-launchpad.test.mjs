@@ -62,3 +62,24 @@ test("signal: missing launchpad data stays unknown, never fabricated", () => {
   assert.equal(pump.momentum, null);
   assert.equal(pump.strength, null);
 });
+
+test("signal: launchpad rotation edge requires both endpoints above revenue and share gates", () => {
+  const signal = computeLaunchpadSignal([
+    { launchpad: "pumpfun", label: "pump.fun", chain: "solana", revenue24h: 1_000_000, revenue7d: 3_500_000, dataQuality: "ok" },
+    { launchpad: "believe", label: "Believe", chain: "solana", revenue24h: 3, revenue7d: 70, dataQuality: "ok" },
+  ]);
+
+  assert.equal(signal.components.find((c) => c.launchpad === "believe").revenue24h, 3);
+  assert.equal(signal.rotationEdges.length, 0);
+});
+
+test("signal: produced launchpad rotation edge is scaled by the smaller endpoint share", () => {
+  const signal = computeLaunchpadSignal([
+    { launchpad: "pumpfun", label: "pump.fun", chain: "solana", revenue24h: 900_000, revenue7d: 3_500_000, dataQuality: "ok" },
+    { launchpad: "letsbonk", label: "LetsBonk", chain: "solana", revenue24h: 100_000, revenue7d: 1_400_000, dataQuality: "ok" },
+  ]);
+
+  assert.equal(signal.rotationEdges.length, 1);
+  assert.equal(signal.rotationEdges[0].from, "letsbonk");
+  assert.ok(signal.rotationEdges[0].strength < 100);
+});
