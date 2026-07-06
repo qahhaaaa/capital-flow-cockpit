@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-07-06
+
+- **标的链+合约地址(CA)点击复制**: watchlist provider 从 GeckoTerminal `base_token.data.id`(`链_地址`,按首个下划线切)解析 CA 写入 metrics.ca(CoinGecko 兜底无地址=null 诚实标注);仓位主行加链标签 chip(SOL/ETH/Base/BSC),详情行加合约地址行——截断显示(前6…后4)+ 完整地址进 title/data-ca + 复制按钮(navigator.clipboard,execCommand 兜底,复用点击事件委托、stopPropagation 不误触发行展开,复制完整地址)。Codex 实现+审查(实测复制全址、不撑破 390px)。测试 125→126。类型: 新增/修改。文件: `src/cockpit/providers/watchlist.mjs`, `public/main.js`, `public/index.html`, `tests/cockpit-provider-watchlist.test.mjs`。
+- **展示数字人类友好**: usd 改中文万/亿/万亿去尾零;新增 price(不足 $1 不再抹成 $0)、ratio(合约/现货 ×)、fundingAnnual(每 8h 费率年化%/年)、countCn(N 笔)、relTime(相对时间);改造 L4 费率/量比、仓位详情 metrics、宏观净流动性、footer 时间。纯展示层,引擎/数据不变。文件: `public/main.js`, `public/guide.html`。
+
 ## 2026-07-04
 
 - **决策优先 UI 改版(Codex 实现 + Claude 审查)**: 新增顶部「结论卡」(水位/链间/发射台/潮汐+杠杆/行动五行,红绿灯语义,缺失层如实标注)与「可信度栏」(相对更新时间+五层质量点+可展开源状态);每面板加"怎么读"一行;关键数值好坏着色;版面重排(结论→可信→仓位→L3+L2→L4+L5→辅助);宏观三曲线挪页尾 <details> 默认折叠+首次展开才渲染;移动端(≤480px)表格容器内横滚、guidance 隐藏顺风/逆风列、触控≥32px。审查修复 8 处: 潮汐/杠杆独立组合(dexCex missing 不再吞掉潮汐)、水位行不因宏观缺失隐藏 flowState 信息、链间行轮动边按 type=chain 过滤(发射台边误挂)、拐点警报带链名、风险 0 不显示、guidance 表移动端 min-width 特异性、grid 项 min-width:0 防页面撑宽、错误提示脚本名。类型: 修改。文件: `public/index.html`, `public/main.js`。

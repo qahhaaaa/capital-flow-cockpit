@@ -18,6 +18,7 @@ const pool = ({
   sells = "8",
   fdv = "1234567",
   marketCap = "765432",
+  baseToken,
 } = {}) => ({
   attributes: {
     name,
@@ -29,7 +30,10 @@ const pool = ({
     fdv_usd: fdv,
     market_cap_usd: marketCap,
   },
-  relationships: { dex: { data: { id: dex } } },
+  relationships: {
+    dex: { data: { id: dex } },
+    ...(baseToken === undefined ? {} : { base_token: { data: { id: baseToken } } }),
+  },
 });
 
 test("GeckoTerminal watchlist filters quality, excludes wrapped/stables, dedups symbols, and maps pump dex", async () => {
@@ -99,6 +103,32 @@ test("watchlist numeric guard keeps null, undefined, and empty string as null, n
   assert.equal(metrics.fdvUsd, null);
   assert.equal(metrics.vol24hUsd, 900000);
   assert.equal(metrics.liqUsd, 250000);
+});
+
+test("GeckoTerminal watchlist parses base token contract address into metrics ca", async () => {
+  const out = await loadDynamicWatchlist({
+    chains: [
+      { id: "solana", label: "SOL", llamaName: "Solana" },
+      { id: "ethereum", label: "ETH", llamaName: "Ethereum" },
+      { id: "base", label: "Base", llamaName: "Base" },
+    ],
+    fetchImpl: async (url) => {
+      if (url.includes("networks/solana")) {
+        return { ok: true, json: async () => ({ data: [pool({ name: "AAA / SOL", baseToken: "solana_ABC123" })] }) };
+      }
+      if (url.includes("networks/eth")) {
+        return { ok: true, json: async () => ({ data: [pool({ name: "DEAD / ETH", baseToken: "eth_0xDeaD" })] }) };
+      }
+      if (url.includes("networks/base")) {
+        return { ok: true, json: async () => ({ data: [pool({ name: "MISS / ETH" })] }) };
+      }
+      throw new Error(`unexpected url ${url}`);
+    },
+  });
+
+  assert.equal(out.perChain.solana[0].metrics.ca, "ABC123");
+  assert.equal(out.perChain.ethereum[0].metrics.ca, "0xDeaD");
+  assert.equal(out.perChain.base[0].metrics.ca, null);
 });
 
 test("watchlist falls back to CoinGecko for one chain when GeckoTerminal fails and isolates other chains", async () => {

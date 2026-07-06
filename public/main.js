@@ -10,6 +10,7 @@ const DIR_LABEL = {
   to_spot: "偏现货", to_perp: "偏合约", risk_on: "放水", risk_off: "收水", neutral: "中性",
   rotate_in: "轮入 ▲", rotate_out: "轮出 ▼", balanced: "均衡",
 };
+const CHAIN_LABEL = { solana: "SOL", ethereum: "ETH", base: "Base", bsc: "BSC" };
 const dirClass = (d) => (["inflow", "heating", "rotate_in", "to_spot", "risk_on"].includes(d) ? "up"
   : ["outflow", "cooling", "rotate_out", "to_perp", "risk_off"].includes(d) ? "down" : "flat");
 
@@ -55,6 +56,12 @@ const relTime = (iso) => {
 const qBadge = (q) => {
   const value = q ?? "missing";
   return `<span class="q q-${esc(value)}">${esc(value)}</span>`;
+};
+const chainLabel = (chainTag) => CHAIN_LABEL[chainTag] ?? chainTag;
+const chainChip = (chainTag) => chainTag ? `<span class="chain-chip">${esc(chainLabel(chainTag))}</span>` : "";
+const shortCa = (ca) => {
+  const value = String(ca ?? "");
+  return value.length > 13 ? `${value.slice(0, 6)}…${value.slice(-4)}` : value;
 };
 
 function macroContextPlaceholder() {
@@ -213,6 +220,46 @@ function setupGuidanceDetails() {
       toggleGuidanceDetail(button.dataset.guidanceIndex);
     });
   });
+  document.querySelectorAll(".copy-btn[data-ca]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void handleCopyCa(button);
+    });
+  });
+}
+
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-1000px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("copy failed");
+}
+
+async function handleCopyCa(button) {
+  const ca = button.dataset.ca;
+  if (!ca) return;
+  const original = button.textContent;
+  button.disabled = true;
+  try {
+    await copyText(ca);
+    button.textContent = "已复制";
+  } catch {
+    button.textContent = "复制失败";
+  }
+  setTimeout(() => {
+    button.textContent = original;
+    button.disabled = false;
+  }, 1500);
 }
 
 function toggleGuidanceDetail(index) {
@@ -610,12 +657,12 @@ function rotationPanel(d) {
 
 const GUIDANCE_METRIC_FIELDS = [
   "priceUsd", "px5mPct", "px1hPct", "px6hPct", "px24hPct", "vol6hUsd", "vol24hUsd",
-  "liqUsd", "buys24h", "sells24h", "fdvUsd", "marketCapUsd", "source", "at",
+  "liqUsd", "buys24h", "sells24h", "fdvUsd", "marketCapUsd", "ca", "source", "at",
 ];
 const GUIDANCE_METRIC_LABELS = {
   priceUsd: "价格", px5mPct: "5m", px1hPct: "1h", px6hPct: "6h", px24hPct: "24h",
   vol6hUsd: "6h 成交", vol24hUsd: "24h 成交", liqUsd: "流动性", buys24h: "24h 买入",
-  sells24h: "24h 卖出", fdvUsd: "FDV", marketCapUsd: "市值", source: "来源", at: "时间",
+  sells24h: "24h 卖出", fdvUsd: "FDV", marketCapUsd: "市值", ca: "合约地址", source: "来源", at: "时间",
 };
 
 function guidanceMetricValue(key, value) {
@@ -624,8 +671,17 @@ function guidanceMetricValue(key, value) {
   if (key === "priceUsd") return price(value);
   if (["vol6hUsd", "vol24hUsd", "liqUsd", "fdvUsd", "marketCapUsd"].includes(key)) return usd(value);
   if (["buys24h", "sells24h"].includes(key)) return countCn(value);
+  if (key === "ca") return shortCa(value);
   if (key === "at") return relTime(value);
   return String(value);
+}
+
+function guidanceContractRow(metrics) {
+  const ca = metrics?.ca;
+  if (typeof ca !== "string" || ca.length === 0) {
+    return `<div class="contract-row"><span>合约地址</span><strong class="muted">—（该源无合约地址）</strong></div>`;
+  }
+  return `<div class="contract-row"><span>合约地址</span><strong class="ca-value" title="${esc(ca)}">${esc(shortCa(ca))}</strong><button class="copy-btn" type="button" data-ca="${esc(ca)}" title="复制完整合约地址">复制</button></div>`;
 }
 
 function guidanceMetricRows(metrics) {
@@ -650,6 +706,7 @@ function guidanceDetailRow(g, index) {
       <div class="guidance-detail">
         <div>
           <h3>标的级 metrics</h3>
+          ${guidanceContractRow(g.metrics)}
           <div class="metric-grid">${guidanceMetricRows(g.metrics)}</div>
         </div>
         <div>
@@ -665,7 +722,7 @@ function guidanceDetailRow(g, index) {
 function guidancePanel(d) {
   const rows = (d.guidance ?? []).map((g, index) => `<tr class="guidance-main-row" data-guidance-index="${index}">
     <td><button class="guidance-toggle" type="button" data-guidance-index="${index}" aria-expanded="false" aria-label="展开 ${esc(g.target)} 明细">+</button></td>
-    <td>${esc(g.target)}</td>
+    <td><span class="target-cell"><span>${esc(g.target)}</span>${chainChip(g.chainTag)}</span></td>
     <td class="muted">${g.type === "cex_perp" ? "CEX合约" : "链上现货"}</td>
     <td class="num tier-text-${esc(g.tier)}">${esc(g.conviction)}</td>
     <td><span class="tier tier-${esc(g.tier)}">${esc(g.tierLabel ?? g.tier)}</span></td>

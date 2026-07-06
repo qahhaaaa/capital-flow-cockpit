@@ -60,6 +60,14 @@ function geckoUrl(chain) {
   return `https://api.geckoterminal.com/api/v2/networks/${net}/trending_pools?page=1`;
 }
 
+function caFromGeckoBaseToken(row) {
+  const id = row?.relationships?.base_token?.data?.id;
+  if (typeof id !== "string" || !id) return null;
+  const splitAt = id.indexOf("_");
+  if (splitAt <= 0 || splitAt >= id.length - 1) return null;
+  return id.slice(splitAt + 1) || null;
+}
+
 function coingeckoUrl(chain) {
   const category = COINGECKO_CATEGORY[chain.id];
   if (!category) throw new Error(`unsupported CoinGecko category ${chain.id}`);
@@ -95,6 +103,7 @@ function geckoEntry(row, chain, at) {
       sells24h: strictNumber(attributes.transactions?.h24?.sells),
       fdvUsd: strictNumber(attributes.fdv_usd),
       marketCapUsd: strictNumber(attributes.market_cap_usd),
+      ca: caFromGeckoBaseToken(row),
       source: "geckoterminal",
       at,
     },
@@ -121,6 +130,7 @@ function coingeckoEntry(row, chain, at) {
       sells24h: null,
       fdvUsd: strictNumber(row?.fully_diluted_valuation),
       marketCapUsd: strictNumber(row?.market_cap),
+      ca: null,
       source: "coingecko",
       at,
     },
