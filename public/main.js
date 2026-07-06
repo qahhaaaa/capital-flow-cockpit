@@ -833,6 +833,11 @@ function guidanceDetailRow(g, index) {
           <h3>conviction 因子</h3>
           <div class="factor-list">${guidanceFactorRows(g.factors)}</div>
         </div>
+        <div>
+          <h3>顺风 / 逆风层</h3>
+          <div>顺风:${(g.tailwindLayers ?? []).length ? g.tailwindLayers.map((t) => `<span class="up">${esc(t.layer)}${t.reason ? `(${esc(t.reason)})` : ""}</span>`).join("、") : "—"}</div>
+          <div style="margin-top:4px">逆风:${(g.headwindLayers ?? []).length ? g.headwindLayers.map((h) => `<span class="down">${esc(h.layer)}${h.reason ? `(${esc(h.reason)})` : ""}</span>`).join("、") : "—"}</div>
+        </div>
         <div class="muted gap-note">持币人数/分时净流入：免费云端无源，标缺口（可本地 GMGN 补）。</div>
       </div>
     </td>
