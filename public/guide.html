@@ -175,7 +175,7 @@
       const cls = (d) => up.includes(d) ? "up" : down.includes(d) ? "down" : "flat";
       const pp = (v) => v == null ? "—" : (v > 0 ? "+" : "") + Number(v).toFixed(4) + "pp";
       const pctS = (v) => v == null ? "—" : (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
-      const usd = (v) => { if (v == null) return "—"; const a = Math.abs(v); if (a>=1e9) return "$"+(v/1e9).toFixed(2)+"B"; if (a>=1e6) return "$"+(v/1e6).toFixed(2)+"M"; if (a>=1e3) return "$"+(v/1e3).toFixed(1)+"K"; return "$"+v.toFixed(0); };
+      const usd = (v) => { if (v == null) return "—"; const n = Number(v); if (!isFinite(n)) return "—"; const a = Math.abs(n); const s = n < 0 ? "-" : ""; const t = (x) => String(Number(x.toFixed(2))); if (a>=1e12) return s+"$"+t(a/1e12)+"万亿"; if (a>=1e8) return s+"$"+t(a/1e8)+"亿"; if (a>=1e4) return s+"$"+t(a/1e4)+"万"; return s+"$"+Math.round(a).toLocaleString("en-US"); };
 
       function step(n, k, v) { return `<div class="step"><span class="dot">${n}</span><div class="k">${k}</div><div class="v">${v}</div></div>`; }
       function traceCard(title, steps) { return `<div class="card"><h3>${title}</h3><div class="trace">${steps.join("")}</div></div>`; }
@@ -211,7 +211,7 @@
         // 潮汐+杠杆
         const tide = d.stableTide || {}; const dx = d.layers?.dexCex || {};
         t.push(traceCard("结论卡「潮汐 + 杠杆」 — 钱进没进场、进来后去了现货还是合约", [
-          step(1, "原始数据", `稳定币总市值 <b>${usd(tide.mcapUsd)}</b>(24h <span class="${cls(tide.direction)}">${pctS(tide.delta24hPct)}</span>)　|　合约/现货量比 <b>${dx.perpSpotRatio ?? "—"}</b>,资金费率方向 <span class="${cls(dx.direction)}">${dx.direction === 'to_perp' ? '偏合约' : dx.direction === 'to_spot' ? '偏现货' : '均衡'}</span>`),
+          step(1, "原始数据", `稳定币总市值 <b>${usd(tide.mcapUsd)}</b>(24h <span class="${cls(tide.direction)}">${pctS(tide.delta24hPct)}</span>)　|　合约/现货量比 <b>${dx.perpSpotRatio == null ? "—" : Number(dx.perpSpotRatio).toFixed(1) + "×"}</b>,资金费率方向 <span class="${cls(dx.direction)}">${dx.direction === 'to_perp' ? '偏合约' : dx.direction === 'to_spot' ? '偏现货' : '均衡'}</span>`),
           step(2, "该层信号", `潮汐 <b class="${cls(tide.direction)}">${tide.direction === 'inflow' ? '新钱进场' : tide.direction === 'outflow' ? '资金撤出' : tide.direction === 'flat' ? '总盘持平' : '积累中'}</b>　|　拥挤度 <b class="${dx.crowding==='high'?'down':'flat'}">${dx.crowding === 'high' ? '高(过热)' : dx.crowding === 'normal' ? '正常' : '未知'}</b>`),
           step(3, "结论卡显示", `${tide.direction === 'inflow' ? '新钱进场' : tide.direction === 'outflow' ? '资金撤出' : '总盘持平'} · 24h ${pctS(tide.delta24hPct)}${dx.crowding === 'high' ? ' · <span class="down">合约拥挤,防挤仓</span>' : ''}`),
           step("!", "教学点", `注意组合读:当前<b class="up">新钱在进场</b>,但钱主要<b class="down">偏向合约(${dx.direction === 'to_perp' ? '投机/杠杆主导' : '—'})</b>而非现货 —— 进场的是投机资金,承接型现货偏弱。这正是「水位」行说"偏 CEX 合约"的由来。`),

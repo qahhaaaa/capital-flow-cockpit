@@ -15,13 +15,42 @@ const dirClass = (d) => (["inflow", "heating", "rotate_in", "to_spot", "risk_on"
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pct = (v) => (v === null || v === undefined ? "—" : `${Number(v).toFixed(2)}%`);
+// 金额:中文万/亿/万亿单位(中文读者一眼可读),保留 $ 表明美元。
 const usd = (v) => {
   if (v === null || v === undefined) return "—";
-  const n = Number(v); const a = Math.abs(n);
-  if (a >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (a >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (a >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
-  return `$${n.toFixed(0)}`;
+  const n = Number(v); if (!Number.isFinite(n)) return "—";
+  const a = Math.abs(n); const sign = n < 0 ? "-" : "";
+  const trim = (x) => String(Number(x.toFixed(2))); // 5.84→5.84, 22.00→22, 356.80→356.8
+  if (a >= 1e12) return `${sign}$${trim(a / 1e12)}万亿`;
+  if (a >= 1e8) return `${sign}$${trim(a / 1e8)}亿`;
+  if (a >= 1e4) return `${sign}$${trim(a / 1e4)}万`;
+  return `${sign}$${Math.round(a).toLocaleString("en-US")}`;
+};
+// 代币价格:绝不把不足 $1 的价格抹成 $0——按量级保留有效位。
+const price = (v) => {
+  if (v === null || v === undefined) return "—";
+  const n = Number(v); if (!Number.isFinite(n)) return "—";
+  const a = Math.abs(n);
+  if (a >= 1000) return usd(n);
+  if (a >= 1) return `$${n.toFixed(2)}`;
+  if (a >= 0.01) return `$${n.toFixed(4)}`;
+  if (a >= 0.0001) return `$${n.toFixed(6)}`;
+  if (a > 0) return `$${n.toPrecision(2)}`;
+  return "$0";
+};
+const ratio = (v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? "—" : `${Number(v).toFixed(1)}×`);
+const countCn = (v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? "—" : `${Number(v).toLocaleString("en-US")} 笔`);
+// OKX/HL 资金费率是每 8h 的费率 → 年化(×3/日 ×365)才是人能理解的"持仓成本/年"。
+const fundingAnnual = (v) => {
+  if (v === null || v === undefined || !Number.isFinite(Number(v))) return "—";
+  const yr = Number(v) * 3 * 365 * 100;
+  return `${yr > 0 ? "+" : ""}${yr.toFixed(1)}%/年`;
+};
+const relTime = (iso) => {
+  const t = Date.parse(iso ?? "");
+  if (!Number.isFinite(t)) return "—";
+  const min = Math.max(0, Math.round((Date.now() - t) / 60000));
+  return min < 1 ? "刚刚" : min < 60 ? `${min} 分钟前` : min < 1440 ? `${Math.floor(min / 60)} 小时前` : `${Math.floor(min / 1440)} 天前`;
 };
 const qBadge = (q) => {
   const value = q ?? "missing";
@@ -210,7 +239,7 @@ function render(d) {
     rotationPanel(d),
     healthPanel(d),
     macroContextDetails(),
-    `<footer><a href="./guide.html">📖 怎么看这张面板</a> · schema ${esc(d.schema)} · 生成于 ${esc(d.meta?.generatedAt ?? "—")} · 历史点 ${esc(d.meta?.historyPoints ?? 0)}</footer>`,
+    `<footer><a href="./guide.html">📖 怎么看这张面板</a> · schema ${esc(d.schema)} · 更新于 ${esc(relTime(d.meta?.generatedAt))} · 历史点 ${esc(d.meta?.historyPoints ?? 0)}</footer>`,
   ].join("");
 }
 
@@ -405,7 +434,8 @@ function macroPanel(d) {
   const m = d.layers?.macro;
   if (!m) return "";
   const cells = (m.components ?? []).map((c) => {
-    const v = c.value === null || c.value === undefined ? "—" : `$${Number(c.value).toLocaleString()}B`;
+    // metrics 里的宏观数值单位是"十亿美元"(B) → ×1e9 还原成美元再走 usd() 的万亿/亿格式。
+    const v = c.value === null || c.value === undefined ? "—" : usd(Number(c.value) * 1e9);
     const chg = c.changePct === null || c.changePct === undefined ? ""
       : ` <span class="${c.changePct > 0 ? "up" : c.changePct < 0 ? "down" : "flat"}">(${c.changePct > 0 ? "+" : ""}${esc(c.changePct)}%)</span>`;
     return `<span class="muted">${esc(METRIC_LABEL[c.metric] ?? c.metric)}</span> ${esc(v)}${chg}`;
@@ -556,15 +586,15 @@ function dexcexPanel(d) {
   const x = d.layers?.dexCex;
   const rows = (x?.components ?? []).map((c) => `<tr>
       <td>${esc(c.symbol)}</td>
-      <td class="num ${fundingClass(c.funding)}">${c.funding === null || c.funding === undefined ? "—" : `${(Number(c.funding) * 100).toFixed(4)}%`}</td>
-      <td class="num">${esc(c.perpSpot ?? "—")}</td>
+      <td class="num ${fundingClass(c.funding)}">${fundingAnnual(c.funding)}</td>
+      <td class="num">${ratio(c.perpSpot)}</td>
     </tr>`).join("");
   return `<div class="panel">
     <h2>L4 DEX↔CEX · <span class="${dirClass(x?.direction)}">${esc(DIR_LABEL[x?.direction] ?? x?.direction ?? "—")}</span>${x?.crowding === "high" ? ' <span class="down">合约拥挤</span>' : ""}</h2>
     <div class="how">${esc(HOW.dexCex)}</div>
-    <div class="muted">perp/spot 量比: ${esc(x?.perpSpotRatio ?? "—")} · 数据 ${qBadge(x?.dataQuality)}</div>
+    <div class="muted">合约/现货量比: ${ratio(x?.perpSpotRatio)} · 数据 ${qBadge(x?.dataQuality)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>资产</th><th class="num">资金费率</th><th class="num">perp/spot</th></tr></thead>
+      <thead><tr><th>资产</th><th class="num">资金费率·年化</th><th class="num">合约/现货</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="3" class="muted">OKX 未采集(可能代理不可达)。</td></tr>`}</tbody>
     </table>`)}
   </div>`;
@@ -591,8 +621,10 @@ const GUIDANCE_METRIC_LABELS = {
 function guidanceMetricValue(key, value) {
   if (value === null || value === undefined) return "—";
   if (key.startsWith("px")) return pctSigned(Number(value));
-  if (["priceUsd", "vol6hUsd", "vol24hUsd", "liqUsd", "fdvUsd", "marketCapUsd"].includes(key)) return usd(value);
-  if (["buys24h", "sells24h"].includes(key)) return Number(value).toLocaleString("en-US");
+  if (key === "priceUsd") return price(value);
+  if (["vol6hUsd", "vol24hUsd", "liqUsd", "fdvUsd", "marketCapUsd"].includes(key)) return usd(value);
+  if (["buys24h", "sells24h"].includes(key)) return countCn(value);
+  if (key === "at") return relTime(value);
   return String(value);
 }
 
