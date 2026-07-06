@@ -2,6 +2,8 @@
 
 ## 2026-07-06
 
+- **标的详情加 GMGN 跳转**: 合约地址行新增「GMGN ↗」外链(`gmgn.ai/{sol|eth|base|bsc}/token/{ca}`,链 slug 映射,仅有 CA 且已知链时显示;`target=_blank rel=noopener noreferrer`)。纯展示。文件: `public/main.js`, `public/index.html`。
+
 - **标的链+合约地址(CA)点击复制**: watchlist provider 从 GeckoTerminal `base_token.data.id`(`链_地址`,按首个下划线切)解析 CA 写入 metrics.ca(CoinGecko 兜底无地址=null 诚实标注);仓位主行加链标签 chip(SOL/ETH/Base/BSC),详情行加合约地址行——截断显示(前6…后4)+ 完整地址进 title/data-ca + 复制按钮(navigator.clipboard,execCommand 兜底,复用点击事件委托、stopPropagation 不误触发行展开,复制完整地址)。Codex 实现+审查(实测复制全址、不撑破 390px)。测试 125→126。类型: 新增/修改。文件: `src/cockpit/providers/watchlist.mjs`, `public/main.js`, `public/index.html`, `tests/cockpit-provider-watchlist.test.mjs`。
 - **展示数字人类友好**: usd 改中文万/亿/万亿去尾零;新增 price(不足 $1 不再抹成 $0)、ratio(合约/现货 ×)、fundingAnnual(每 8h 费率年化%/年)、countCn(N 笔)、relTime(相对时间);改造 L4 费率/量比、仓位详情 metrics、宏观净流动性、footer 时间。纯展示层,引擎/数据不变。文件: `public/main.js`, `public/guide.html`。
 

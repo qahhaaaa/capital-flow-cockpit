@@ -59,6 +59,12 @@ const qBadge = (q) => {
 };
 const chainLabel = (chainTag) => CHAIN_LABEL[chainTag] ?? chainTag;
 const chainChip = (chainTag) => chainTag ? `<span class="chain-chip">${esc(chainLabel(chainTag))}</span>` : "";
+// GMGN 链 slug(仅这四条支持);未知链→无跳转链接。
+const GMGN_CHAIN = { solana: "sol", ethereum: "eth", base: "base", bsc: "bsc" };
+const gmgnUrl = (chainTag, ca) => {
+  const slug = GMGN_CHAIN[chainTag];
+  return slug && typeof ca === "string" && ca ? `https://gmgn.ai/${slug}/token/${encodeURIComponent(ca)}` : null;
+};
 const shortCa = (ca) => {
   const value = String(ca ?? "");
   return value.length > 13 ? `${value.slice(0, 6)}…${value.slice(-4)}` : value;
@@ -676,12 +682,14 @@ function guidanceMetricValue(key, value) {
   return String(value);
 }
 
-function guidanceContractRow(metrics) {
+function guidanceContractRow(metrics, chainTag) {
   const ca = metrics?.ca;
   if (typeof ca !== "string" || ca.length === 0) {
     return `<div class="contract-row"><span>合约地址</span><strong class="muted">—（该源无合约地址）</strong></div>`;
   }
-  return `<div class="contract-row"><span>合约地址</span><strong class="ca-value" title="${esc(ca)}">${esc(shortCa(ca))}</strong><button class="copy-btn" type="button" data-ca="${esc(ca)}" title="复制完整合约地址">复制</button></div>`;
+  const gmgn = gmgnUrl(chainTag, ca);
+  const gmgnLink = gmgn ? `<a class="ext-link" href="${esc(gmgn)}" target="_blank" rel="noopener noreferrer">GMGN ↗</a>` : "";
+  return `<div class="contract-row"><span>合约地址</span><strong class="ca-value" title="${esc(ca)}">${esc(shortCa(ca))}</strong><button class="copy-btn" type="button" data-ca="${esc(ca)}" title="复制完整合约地址">复制</button>${gmgnLink}</div>`;
 }
 
 function guidanceMetricRows(metrics) {
@@ -706,7 +714,7 @@ function guidanceDetailRow(g, index) {
       <div class="guidance-detail">
         <div>
           <h3>标的级 metrics</h3>
-          ${guidanceContractRow(g.metrics)}
+          ${guidanceContractRow(g.metrics, g.chainTag)}
           <div class="metric-grid">${guidanceMetricRows(g.metrics)}</div>
         </div>
         <div>
