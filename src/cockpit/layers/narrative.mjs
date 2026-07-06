@@ -10,19 +10,26 @@ import { percentileRank } from "../stats.mjs";
 const EPS_PCT = 2; // 7d % deadband
 const TOP_N = 8;
 
-export function normalizeCategories(protocols, { topN = TOP_N } = {}) {
+export function normalizeCategories(protocols, { topN = TOP_N, protocolsPerSector = 3 } = {}) {
   const list = Array.isArray(protocols) ? protocols : [];
   const byCat = new Map();
   for (const p of list) {
     const sector = p?.category;
     const tvl = Number(p?.tvl);
     if (!sector || !Number.isFinite(tvl) || tvl <= 0) continue;
-    const cur = byCat.get(sector) ?? { sector, tvl: 0, w7: 0, wTvl7: 0, w1: 0, wTvl1: 0 };
+    const cur = byCat.get(sector) ?? { sector, tvl: 0, w7: 0, wTvl7: 0, w1: 0, wTvl1: 0, protocols: [] };
     cur.tvl += tvl;
     const c7 = Number(p?.change_7d);
     if (Number.isFinite(c7)) { cur.w7 += tvl * c7; cur.wTvl7 += tvl; }
     const c1 = Number(p?.change_1d);
     if (Number.isFinite(c1)) { cur.w1 += tvl * c1; cur.wTvl1 += tvl; }
+    // retain the constituent protocols so the panel can SHOW what drives each sector (支持数据)
+    cur.protocols.push({
+      name: String(p?.name ?? "?"),
+      tvl: round(tvl, 0),
+      change7dPct: Number.isFinite(c7) ? round(c7, 2) : null,
+      change1dPct: Number.isFinite(c1) ? round(c1, 2) : null,
+    });
     byCat.set(sector, cur);
   }
   const perSector = [...byCat.values()]
@@ -31,6 +38,8 @@ export function normalizeCategories(protocols, { topN = TOP_N } = {}) {
       tvl: round(c.tvl, 0),
       change7dPct: c.wTvl7 > 0 ? round(c.w7 / c.wTvl7, 2) : null,
       change1dPct: c.wTvl1 > 0 ? round(c.w1 / c.wTvl1, 2) : null,
+      protocolCount: c.protocols.length,
+      topProtocols: c.protocols.sort((a, b) => b.tvl - a.tvl).slice(0, protocolsPerSector),
     }))
     .sort((a, b) => b.tvl - a.tvl)
     .slice(0, topN);
@@ -63,16 +72,22 @@ export function computeNarrativeSignal(perSector, { mindshare = null } = {}) {
   const absChanges = sectors.map((s) => s.change7dPct).filter(Number.isFinite).map(Math.abs);
 
   const components = sectors.map((s) => {
+    const c1 = Number.isFinite(Number(s.change1dPct)) ? Number(s.change1dPct) : null;
+    const topProtocols = Array.isArray(s.topProtocols) ? s.topProtocols : [];
+    const protocolCount = Number.isFinite(Number(s.protocolCount)) ? Number(s.protocolCount) : null;
     const c7 = Number(s.change7dPct);
     if (!Number.isFinite(c7)) {
-      return { sector: s.sector, tvl: s.tvl, change7dPct: null, direction: "unknown", strength: null, dataQuality: "missing" };
+      return { sector: s.sector, tvl: s.tvl, change7dPct: null, change1dPct: c1, direction: "unknown", strength: null, protocolCount, topProtocols, dataQuality: "missing" };
     }
     return {
       sector: s.sector,
       tvl: s.tvl,
       change7dPct: c7,
+      change1dPct: c1,
       direction: c7 > EPS_PCT ? "rotate_in" : c7 < -EPS_PCT ? "rotate_out" : "flat",
       strength: percentileRank(Math.abs(c7), absChanges),
+      protocolCount,
+      topProtocols,
       dataQuality: "ok",
     };
   });
@@ -88,12 +103,16 @@ export function computeNarrativeSignal(perSector, { mindshare = null } = {}) {
       type: "sector",
       strength: clamp(round(top.change7dPct - bottom.change7dPct, 0)),
       confidence: "medium",
+      // derivation basis: strongest inflow sector ← weakest, and the spread that made the edge
+      fromChange: bottom.change7dPct,
+      toChange: top.change7dPct,
     });
   }
 
   const okCount = components.filter((c) => c.dataQuality === "ok").length;
   return {
     layer: "narrative",
+    eps7dPct: EPS_PCT, // 方向阈值,供前端展示推导规则
     direction: rotationEdges.length ? "rotating" : okCount ? "flat" : "unknown",
     strength: top && Number.isFinite(top.strength) ? top.strength : null,
     confidence: okCount >= 5 ? "high" : okCount > 0 ? "medium" : "low",

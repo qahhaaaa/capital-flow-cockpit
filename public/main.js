@@ -570,18 +570,48 @@ function launchpadPanel(d) {
   </div>`;
 }
 
+// 板块轮动「推导过程 + 支持数据」——把方向阈值、强度分位、TVL 加权、成分协议、口径警告都摊开。
+function narrativeDerivation(nv) {
+  const comps = nv?.components ?? [];
+  if (!comps.length) return "";
+  const eps = nv.eps7dPct ?? 2;
+  const edge = (nv.rotationEdges ?? [])[0];
+  const edgeText = edge
+    ? `<div><strong>轮动边推导</strong>:<span class="up">${esc(edge.to)}</span>(轮入端 ${esc(pctSigned(edge.toChange))})← <span class="down">${esc(edge.from)}</span>(轮出端 ${esc(pctSigned(edge.fromChange))}),强度=两端 7d 差值 ${esc(edge.strength)}。</div>`
+    : `<div><strong>轮动边推导</strong>:最强/最弱板块未同时突破 ±${esc(eps)}% 阈值 → 不画板块轮动边(诚实)。</div>`;
+  const perSector = comps.map((c) => {
+    const dirText = c.direction === "rotate_in" ? `轮入(7d ${esc(pctSigned(c.change7dPct))} > +${esc(eps)}%)`
+      : c.direction === "rotate_out" ? `轮出(7d ${esc(pctSigned(c.change7dPct))} < −${esc(eps)}%)`
+      : c.direction === "flat" ? `持平(|7d| ≤ ${esc(eps)}%)` : "数据缺失";
+    const protos = (c.topProtocols ?? []).map((p) => `${esc(p.name)} ${esc(usd(p.tvl))} <span class="${p.change7dPct > 0 ? "up" : p.change7dPct < 0 ? "down" : "flat"}">${esc(pctSigned(p.change7dPct))}</span>`).join("、") || "—";
+    return `<div class="sector-deriv"><div><strong>${esc(c.sector)}</strong> — ${dirText};强度 ${esc(c.strength ?? "—")} 分位${c.protocolCount ? ` · 共 ${esc(c.protocolCount)} 协议` : ""}</div><div class="muted">支持协议(按 TVL):${protos}</div></div>`;
+  }).join("");
+  return `<details class="deriv"><summary>推导过程 + 支持数据(点击展开)</summary>
+    <div class="deriv-body">
+      <div class="muted">规则:板块 7d = 板块内各协议按 TVL 加权的 7d TVL 变化(大协议主导);方向 = 与 ±${esc(eps)}% 死区比较;强度 = 该板块 |7d| 在所有板块中的分位。</div>
+      ${edgeText}
+      ${perSector}
+      <div class="muted" style="border-top:1px solid var(--line);padding-top:6px">⚠ 口径:USD-TVL 含币价噪声(成分币普涨会虚增 TVL 变化,非真实资金流入),BTC/ETH 计价去噪为后续;热门搜索是注意力代理、可刷量,不进引擎。</div>
+    </div>
+  </details>`;
+}
+
 function narrativePanel(d) {
-  const comps = d.layers?.narrative?.components ?? [];
+  const nv = d.layers?.narrative;
+  const comps = nv?.components ?? [];
+  const oneD = (v) => (v === null || v === undefined ? "—" : `<span class="${v > 0 ? "up" : v < 0 ? "down" : "flat"}">${v > 0 ? "+" : ""}${esc(v)}%</span>`);
   const rows = comps.length
     ? comps.map((c) => `<tr>
         <td>${esc(c.sector)}</td>
         <td class="num">${usd(c.tvl)}</td>
         <td class="num ${dirClass(c.direction)}">${c.change7dPct === null || c.change7dPct === undefined ? "—" : `${c.change7dPct > 0 ? "+" : ""}${esc(c.change7dPct)}%`}</td>
+        <td class="num">${oneD(c.change1dPct)}</td>
+        <td class="num">${esc(c.strength ?? "—")}</td>
         <td class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</td>
         <td>${qBadge(c.dataQuality)}</td>
       </tr>`).join("")
-    : `<tr><td colspan="5" class="muted">主题层无数据。</td></tr>`;
-  const ms = d.layers?.narrative?.mindshare;
+    : `<tr><td colspan="7" class="muted">主题层无数据。</td></tr>`;
+  const ms = nv?.mindshare;
   const msBlock = ms
     ? `<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px">
         <div class="muted" style="font-size:12px">注意力代理 · CoinGecko 热门搜索 — ${esc(ms.note ?? "")}</div>
@@ -593,9 +623,10 @@ function narrativePanel(d) {
     <h2>L5 主题/板块轮动 · TVL 7d 相对强弱</h2>
     <div class="how">${esc(HOW.narrative)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>板块</th><th class="num">TVL</th><th class="num">7d</th><th>方向</th><th>数据</th></tr></thead>
+      <thead><tr><th>板块</th><th class="num">TVL</th><th class="num">7d</th><th class="num">1d</th><th class="num">强度</th><th>方向</th><th>数据</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`)}
+    ${narrativeDerivation(nv)}
     ${msBlock}
   </div>`;
 }

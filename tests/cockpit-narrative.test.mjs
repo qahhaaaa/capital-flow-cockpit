@@ -33,6 +33,30 @@ test("signal: top category rotates in, bottom rotates out, with a sector rotatio
   assert.equal(signal.rotationEdges[0].to, "RWA");
 });
 
+test("normalize retains top constituent protocols per sector (support data)", () => {
+  const { perSector } = normalizeCategories([
+    { category: "Dexes", name: "Uniswap", tvl: 5000, change_7d: 4, change_1d: 1 },
+    { category: "Dexes", name: "PancakeSwap", tvl: 3000, change_7d: 1, change_1d: -0.5 },
+    { category: "Dexes", name: "Tiny", tvl: 10, change_7d: 50, change_1d: 9 },
+  ], { protocolsPerSector: 2 });
+  const dexes = perSector.find((s) => s.sector === "Dexes");
+  assert.equal(dexes.protocolCount, 3);
+  assert.deepEqual(dexes.topProtocols.map((p) => p.name), ["Uniswap", "PancakeSwap"]); // top 2 by TVL
+  assert.equal(dexes.topProtocols[0].change7dPct, 4);
+});
+
+test("signal exposes derivation inputs: 1d change, top protocols, threshold, edge basis", () => {
+  const { perSector } = normalizeCategories(protocols);
+  const signal = computeNarrativeSignal(perSector);
+  assert.equal(signal.eps7dPct, 2);
+  const dexes = signal.components.find((c) => c.sector === "Dexes");
+  assert.ok(Number.isFinite(dexes.change1dPct));
+  assert.ok(Array.isArray(dexes.topProtocols));
+  const edge = signal.rotationEdges[0];
+  assert.equal(edge.toChange, 10); // RWA +10 = inflow end
+  assert.equal(edge.fromChange, -6); // Lending -6 = outflow end
+});
+
 test("normalizeTrending extracts trending coins + categories (attention proxy)", () => {
   const { trendingCoins, trendingCategories } = normalizeTrending({
     coins: [{ item: { symbol: "wif", name: "dogwifhat", market_cap_rank: 50, data: { price_change_percentage_24h: { usd: 12.4 } } } }],

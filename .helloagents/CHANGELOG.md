@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-07-06(夜)
+
+- **L5 板块轮动加支持数据+推导过程**: narrative 层原本只聚合板块 TVL/加权变化、丢弃成分协议 → 现保留每板块 top3 成分协议(名称/TVL/7d/1d),透传 change1dPct/strength/protocolCount、轮动边 fromChange/toChange、方向阈值 eps7dPct。前端板块表加「1d」「强度」列 + 可展开「推导过程 + 支持数据」块:逐板块显示方向规则(7d 加权变化 vs ±2% 死区)、强度分位、成分协议明细,轮动边推导(最强端←最弱端+差值),以及口径警告(USD-TVL 含币价噪声、热门搜索是可刷注意力代理不进引擎)。真实数据实测(CEX=Binance/OKX/Bitfinex 明细可见)。类型: 新增/修改。文件: `src/cockpit/layers/narrative.mjs`, `public/main.js`, `public/index.html`, `tests/cockpit-narrative.test.mjs`。测试 129→131。
+
 ## 2026-07-06(晚)
 
 - **P-B 提速:GeckoTerminal 链级 6h/1h 快信号**: watchlist provider 从**同一份** trending_pools 响应聚合每链 `accel6h=(6h/6)/(24h/24)−1`(近6h vs 全天均值加速)、accel1h、量加权 6h 价动量、6h 买卖不平衡(零新增 API 调用);接入链间综合的 fast 层(0.45),使轮动可在 **6h 内早期发现**(仅快信号→edge stage=early;24h 追上→confirmed)。chain-volume 加 `change_7d`(持续性 7d 窗口)。GT h1 量/txns.h6 缺失优雅降级。
