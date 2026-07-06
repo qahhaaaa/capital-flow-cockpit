@@ -49,6 +49,18 @@ export function buildShareSeriesWithTs(history, chains = SUPPORTED_CHAINS) {
   }));
 }
 
+// Per-chain composite-score series for persistence (streak / momentum). Entries written
+// before the field existed carry no chainScores -> dropped; the series starts when it does.
+export function buildChainScoreSeries(history, chains = SUPPORTED_CHAINS) {
+  const points = (history ?? []).filter((point) => point && point.ts && point.chainScores);
+  return chains.map((chain) => ({
+    chain: chain.id,
+    scorePoints: points
+      .map((point) => ({ ts: point.ts, score: point.chainScores[chain.id] }))
+      .filter((point) => typeof point.score === "number" && Number.isFinite(point.score)),
+  }));
+}
+
 // Global stablecoin total series for the tide side-channel. Entries written before the
 // field existed carry no totalUsd -> dropped (the series honestly starts when the data does).
 // Strict typeof check, no Number() coercion: Number(null) === 0 would smuggle a fake 0 in —

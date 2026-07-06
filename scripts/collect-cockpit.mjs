@@ -6,8 +6,8 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { assembleCockpit } from "../src/cockpit/contract.mjs";
-import { appendCockpitHistory, buildHistoryEntry, buildShareSeriesWithTs, buildTideSeries } from "../src/cockpit/history.mjs";
-import { computeChainFlowSignal } from "../src/cockpit/layers/chain-flow.mjs";
+import { appendCockpitHistory, buildChainScoreSeries, buildHistoryEntry, buildShareSeriesWithTs, buildTideSeries } from "../src/cockpit/history.mjs";
+import { computeChainFlowSignal, computeChainPersistence } from "../src/cockpit/layers/chain-flow.mjs";
 import { computeStableTideSignal } from "../src/cockpit/layers/stable-tide.mjs";
 import { computeAppRevenueSignal } from "../src/cockpit/layers/app-revenue.mjs";
 import { computeLaunchpadSignal } from "../src/cockpit/layers/launchpad.mjs";
@@ -89,8 +89,10 @@ export async function collectCockpit({
   // 动态标的:GT trending 每链 top3;单链失败沿用上一快照该链标的(metrics 置 null),
   // 全部失败且无旧快照才退回占位 DEFAULT_WATCHLIST。成员轮换不触发 TG 推送(notify 已防噪)。
   let activeWatchlist = watchlist;
+  let chainActivity; // GT 链级 6h/1h 快信号(链间综合的 fast 层);失败→undefined 自动降级
   try {
     const dyn = await loadWatchlist();
+    chainActivity = dyn.chainActivity;
     const prevSnapshot = await readJson(outputPath, null);
     const prevRows = Array.isArray(prevSnapshot?.guidance) ? prevSnapshot.guidance : [];
     const entries = [];
@@ -151,11 +153,36 @@ export async function collectCockpit({
     sourceStatus.push({ source: "defillama-dexs", status: "error", message: error.message });
   }
 
-  // 链间信号:份额Δ(0.5)+ DEX 量动量(0.3)+ 链费用动量(0.2),缺失组件不计入并归一化权重。
+  // 链间信号:多时间轴综合 fast(6h,GT)/mid(24h,DeFiLlama)/slow(存量) = 0.45/0.35/0.20,
+  // 缺失层归一化;轮动边按综合分选端点、分早期/确认两级。
   layerSignals.chain = computeChainFlowSignal(buildShareSeriesWithTs(history), {
     dexVolume,
     chainFees: appRevenueHeat?.byChain,
+    chainActivity,
   });
+
+  // P-C 持续性:把本次各链综合分写回当前历史点,用积累的分数序列算持续性签名(仅往后积累,起初标"积累中")。
+  const chainComponents = layerSignals.chain.components ?? [];
+  const chainScores = {};
+  for (const component of chainComponents) {
+    if (typeof component.compositeScore === "number" && Number.isFinite(component.compositeScore)) {
+      chainScores[component.chain] = component.compositeScore;
+    }
+  }
+  const lastEntry = history.at(-1);
+  if (lastEntry && lastEntry.ts === now && Object.keys(chainScores).length) lastEntry.chainScores = chainScores;
+  const scoreSeriesByChain = new Map(buildChainScoreSeries(history).map((s) => [s.chain, s.scorePoints]));
+  const dexVol7dByChain = new Map((Array.isArray(dexVolume) ? dexVolume : []).map((row) => [row.chain, row.dexVolChange7dPct]));
+  for (const component of chainComponents) {
+    component.persistence = computeChainPersistence(component, scoreSeriesByChain.get(component.chain), {
+      dexVolChange7dPct: dexVol7dByChain.get(component.chain),
+    });
+  }
+  // 每条轮动边的持续性 = 目的地链(钱流入端)的持续性签名
+  for (const edge of layerSignals.chain.rotationEdges ?? []) {
+    const dest = chainComponents.find((component) => component.chain === edge.to);
+    if (dest) edge.persistence = dest.persistence;
+  }
 
   let mindshare = null;
   try {

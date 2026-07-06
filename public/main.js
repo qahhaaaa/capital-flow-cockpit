@@ -383,6 +383,15 @@ function rotationStageBadge(edge) {
   return `<span class="${confirmed ? "up" : "warn"}">【${confirmed ? "已确认" : "早期·待确认"}】</span>${follow}`;
 }
 
+// Persistence signature (durability): 结构性>升温>闪现, +streak hours + momentum arrow. Not a forecast.
+function persistenceBadge(p) {
+  if (!p || !p.label || p.label === "无显著流向") return "";
+  const arrow = p.momentum === "building" ? "↑" : p.momentum === "fading" ? "↓" : "→";
+  const cls = p.label.startsWith("结构性") ? "up" : p.label.startsWith("升温") ? "warn" : p.label.startsWith("闪现") ? "down" : "muted";
+  const hrs = p.hours ? `·${p.hours}h` : "";
+  return ` <span class="${cls}">持续性:${esc(p.label)}${hrs}${arrow}</span>`;
+}
+
 function chainConclusionLine(d) {
   const chain = d.layers?.chain;
   if (layerMissing(chain)) return conclusionLine("链间", `<span class="muted">链间层数据缺失</span>`, "muted");
@@ -402,7 +411,7 @@ function chainConclusionLine(d) {
   const main = inflow
     ? `钱在流入 ${esc(inflow.label ?? inflow.chain)}`
     : allFlat ? "链间无显著迁移" : "链间迁移方向不明";
-  const edgeText = edge ? ` · <span class="edge">轮动 ${esc(chainLabel(edge.from))}→${esc(chainLabel(edge.to))}</span> ${rotationStageBadge(edge)}` : "";
+  const edgeText = edge ? ` · <span class="edge">轮动 ${esc(chainLabel(edge.from))}→${esc(chainLabel(edge.to))}</span> ${rotationStageBadge(edge)}${persistenceBadge(edge.persistence)}` : "";
   const warn = inflections.length ? ` · <span class="warn">⚠ 慢漂移拐点:${inflections.join(" ")}</span>` : "";
   return conclusionLine("链间", `${main}${edgeText}${warn}`);
 }
@@ -666,7 +675,7 @@ function rotationPanel(d) {
   const edges = d.flowState?.rotationEdges ?? [];
   const label = (t) => (["solana", "ethereum", "base", "bsc"].includes(t) ? chainLabel(t) : t);
   const body = edges.length
-    ? `<ul>${edges.map((e) => `<li class="edge">${esc(label(e.from))} → ${esc(label(e.to))} ${e.type === "chain" ? rotationStageBadge(e) : ""} <span class="muted">(${esc(e.type)}, 强度 ${esc(e.strength)}, ${esc(e.confidence)})</span></li>`).join("")}</ul>`
+    ? `<ul>${edges.map((e) => `<li class="edge">${esc(label(e.from))} → ${esc(label(e.to))} ${e.type === "chain" ? rotationStageBadge(e) + persistenceBadge(e.persistence) : ""} <span class="muted">(${esc(e.type)}, 强度 ${esc(e.strength)}, ${esc(e.confidence)})</span></li>`).join("")}</ul>`
     : `<p class="muted">暂无显著轮动边。${(d.meta?.historyPoints ?? 0) < 2 ? "(历史点不足,需累积多次采集后才能判断迁移)" : ""}</p>`;
   return `<div class="panel"><h2>轮动地图</h2>${body}</div>`;
 }

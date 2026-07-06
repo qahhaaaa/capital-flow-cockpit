@@ -15,7 +15,7 @@ function chainDexVolumeUrl(chain) {
 }
 
 function missingChain(chain) {
-  return { chain: chain.id, dexVol24hUsd: null, dexVolChange1dPct: null };
+  return { chain: chain.id, dexVol24hUsd: null, dexVolChange1dPct: null, dexVolChange7dPct: null };
 }
 
 export async function loadChainDexVolumeSnapshot({ fetchImpl = fetch, chains = SUPPORTED_CHAINS } = {}) {
@@ -31,6 +31,7 @@ export async function loadChainDexVolumeSnapshot({ fetchImpl = fetch, chains = S
         chain: chain.id,
         dexVol24hUsd: strictNumber(raw?.total24h),
         dexVolChange1dPct: strictNumber(raw?.change_1d),
+        dexVolChange7dPct: strictNumber(raw?.change_7d), // 7d horizon for persistence breadth
       });
     } catch (error) {
       perChain.push(missingChain(chain));

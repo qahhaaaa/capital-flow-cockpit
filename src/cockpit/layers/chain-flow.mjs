@@ -5,7 +5,7 @@
 // the (paid/anti-scraped) bridge endpoints. See docs/capital-flow-rotation-survey-2026-06-19.md.
 import { SUPPORTED_CHAINS } from "../../config.mjs";
 import { round, clamp } from "../../math.mjs";
-import { cleanWindow, cusum, percentileRank, resampleByTime } from "../stats.mjs";
+import { cleanWindow, cusum, emaGap, percentileRank, resampleByTime } from "../stats.mjs";
 
 // Deadband (percentage points of global share) below which a move is "flat" noise.
 const FLAT_EPS_PP = 0.02;
@@ -150,6 +150,7 @@ function activityMap(chainActivity) {
 // Fast horizon: GeckoTerminal 6h volume acceleration (main) + price momentum + buy imbalance.
 function fastScore(activity) {
   const accel6h = finite(activity?.accel6h);
+  const accel1h = finite(activity?.accel1h);
   const pxMom6h = finite(activity?.pxMom6h);
   const buyImb6h = finite(activity?.buyImb6h);
   const accelScore = accel6h === null ? null
@@ -161,7 +162,7 @@ function fastScore(activity) {
     { weight: 0.25, score: pxScore },
     { weight: 0.15, score: imbScore },
   ]);
-  return { score, accel6h, pxMom6h };
+  return { score, accel6h, accel1h, pxMom6h };
 }
 
 // Mid horizon: DeFiLlama 24h DEX volume change + protocol-fee momentum.
@@ -192,6 +193,7 @@ function applyComposite(component, { dexVolumeByChain, feesByChain, activityByCh
     dexVolChange1dPct: mid.dexVolChange1dPct,
     feesMomentum: mid.feesMomentum,
     accel6h: fast.accel6h,
+    accel1h: fast.accel1h,
     pxMom6h: fast.pxMom6h,
     fastScore: fast.score === null ? null : round(fast.score, 4),
     midScore: mid.score === null ? null : round(mid.score, 4),
@@ -380,4 +382,49 @@ export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAI
       : ["四链无显著资金轮动"],
     dataQuality,
   };
+}
+
+// ── Persistence signature (P-C) ──────────────────────────────────────────────
+// Characterises the CURRENT durability signature of a chain's flow — explicitly NOT a
+// forecast: breadth (how many of 1h/6h/24h/7d agree) × streak (consecutive hours held) ×
+// momentum (still building vs fading, via CUSUM/EMA on the score history) × slow-money follow
+// (stablecoin supply moving too). Needs accumulated hourly history to mature ("积累中" first).
+const PERSIST_MIN_POINTS = 6;
+
+export function computeChainPersistence(component, scoreSeries, { dexVolChange7dPct = null } = {}) {
+  const composite = finite(component?.compositeScore);
+  const dir = composite === null || Math.abs(composite) <= COMPOSITE_FLAT ? 0 : Math.sign(composite);
+  const pts = (scoreSeries ?? []).map((p) => finite(p?.score)).filter((s) => s !== null);
+
+  if (dir === 0) {
+    return { label: "无显著流向", hours: 0, momentum: "flat", breadth: 0, slowFollow: false, dataQuality: pts.length ? "partial" : "missing" };
+  }
+
+  // breadth: how many horizons (1h / 6h / 24h / 7d) point the same way as the composite
+  const horizons = [component.accel1h, component.accel6h, component.dexVolChange1dPct, dexVolChange7dPct];
+  const breadth = horizons.filter((h) => finite(h) !== null && Math.sign(h) === dir).length;
+
+  // streak: consecutive most-recent hours the composite score held the current sign
+  let streak = 0;
+  for (let i = pts.length - 1; i >= 0; i -= 1) {
+    if (pts[i] !== 0 && Math.sign(pts[i]) === dir) streak += 1;
+    else break;
+  }
+
+  // momentum: is the flow (measured in its OWN direction) still building or fading?
+  const aligned = pts.map((s) => s * dir);
+  const drift = cusum(aligned);
+  const gap = emaGap(aligned, { fastN: 3, slowN: 8 }).gapPct;
+  const momentum = drift.alarm === "up" || (gap ?? 0) > 2 ? "building"
+    : drift.alarm === "down" || (gap ?? 0) < -2 ? "fading" : "flat";
+
+  const slowFollow = finite(component.slowScore) !== null && component.slowScore !== 0 && Math.sign(component.slowScore) === dir;
+
+  let label;
+  if (pts.length < PERSIST_MIN_POINTS) label = "积累中";
+  else if (breadth >= 3 && streak >= PERSIST_MIN_POINTS && slowFollow) label = "结构性(多日)";
+  else if (breadth >= 2 && momentum !== "fading") label = "升温(1-3d)";
+  else label = "闪现(日内)";
+
+  return { label, hours: streak, momentum, breadth, slowFollow, dataQuality: pts.length >= PERSIST_MIN_POINTS ? "ok" : "partial" };
 }

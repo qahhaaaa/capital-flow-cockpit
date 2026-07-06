@@ -4,7 +4,24 @@ import assert from "node:assert/strict";
 import {
   normalizeStablecoinChains,
   computeChainFlowSignal,
+  computeChainPersistence,
 } from "../src/cockpit/layers/chain-flow.mjs";
+
+test("chain persistence: thin history is honest 积累中; broad+long+slow-follow is 结构性", () => {
+  const base = { compositeScore: 0.44, accel1h: 0.2, accel6h: 0.3, dexVolChange1dPct: 20, slowScore: 0.1 };
+  assert.equal(computeChainPersistence(base, [{ ts: "0", score: 0.4 }]).label, "积累中");
+
+  const rising = Array.from({ length: 8 }, (_, i) => ({ ts: String(i), score: 0.3 + i * 0.02 }));
+  const structural = computeChainPersistence(base, rising, { dexVolChange7dPct: 15 });
+  assert.equal(structural.hours, 8); // all 8 points held the sign
+  assert.equal(structural.breadth, 4); // 1h/6h/24h/7d all agree
+  assert.equal(structural.slowFollow, true);
+  assert.equal(structural.label, "结构性(多日)");
+});
+
+test("chain persistence: flat composite -> 无显著流向, never a fabricated durability", () => {
+  assert.equal(computeChainPersistence({ compositeScore: 0.01 }, []).label, "无显著流向");
+});
 
 // Shape mirrors stablecoins.llama.fi/stablecoinchains (verified free API).
 const rawChains = [

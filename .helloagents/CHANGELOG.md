@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-07-06(晚)
+
+- **P-B 提速:GeckoTerminal 链级 6h/1h 快信号**: watchlist provider 从**同一份** trending_pools 响应聚合每链 `accel6h=(6h/6)/(24h/24)−1`(近6h vs 全天均值加速)、accel1h、量加权 6h 价动量、6h 买卖不平衡(零新增 API 调用);接入链间综合的 fast 层(0.45),使轮动可在 **6h 内早期发现**(仅快信号→edge stage=early;24h 追上→confirmed)。chain-volume 加 `change_7d`(持续性 7d 窗口)。GT h1 量/txns.h6 缺失优雅降级。
+- **P-C 持续性签名**: 新增 `computeChainPersistence`——广度(1h/6h/24h/7d 同向计数)× 连续性(综合分连续同向小时数,来自历史)× 动量(复用 CUSUM/EMA 缺口判 building/fading)× 慢钱跟进(稳定币份额是否同向)→ 标签 `闪现(日内)/升温(1-3d)/结构性(多日)/积累中`(诚实:当前形态刻画**非未来预测**,需历史积累)。history 新增每链综合分快照 + `buildChainScoreSeries`;持续性挂到每链组件与每条轮动边(边=目的地链签名)。前端结论卡/轮动地图显示分级+持续性徽章。类型: 新增/修改。文件: `src/cockpit/providers/watchlist.mjs`, `src/cockpit/providers/chain-volume.mjs`, `src/cockpit/layers/chain-flow.mjs`, `src/cockpit/history.mjs`, `scripts/collect-cockpit.mjs`, `public/main.js`, `tests/cockpit-chain-flow.test.mjs`。测试 127→129。
+
 ## 2026-07-06(下午)
 
 - **轮动治本:边改用综合信号选端点(修 SOL→BSC 漏判)**: 轮动边原来只按"稳定币供应份额(存量)"选端点并卡阈值,存量 intraday 几乎不动 → 昨天 SOL 冷/BSC 热(DEX −11%/+43%、费用背离)明明白白却画不出边。改为按**多时间轴综合分**(fast 6h / mid 24h / slow 存量 = 0.45/0.35/0.20,缺失层归一化)选端点;非对称阈值(目的地 >+0.15、来源 <−0.05);边分两级 **stage: early(仅快信号)/ confirmed(24h 确认)** + slowFollow(慢钱是否跟进)。真实数据实测:`SOL→BSC 已确认` 现在会亮(strength 24)。前端结论卡链间行+轮动地图显示分级徽章。fast(6h)入口(chainActivity)已在 chain-flow 留好,GT 聚合快信号(P-B)与持续性(P-C)随后接。向后兼容:无 activity 时退回 mid+slow,无任何增强参数时退回旧存量边。类型: 修复/修改。文件: `src/cockpit/layers/chain-flow.mjs`, `public/main.js`, `tests/cockpit-chain-flow.test.mjs`。测试 126→127。

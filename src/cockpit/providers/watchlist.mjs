@@ -1,5 +1,8 @@
 // Dynamic watchlist provider — GeckoTerminal trending pools with CoinGecko fallback.
+// Also aggregates each chain's SHORT-WINDOW activity (6h/1h) from the SAME response, for the
+// fast horizon of the chain-flow composite (earlier rotation detection than DeFiLlama's 24h).
 import { SUPPORTED_CHAINS } from "../../config.mjs";
+import { round } from "../../math.mjs";
 
 export const GECKOTERMINAL_NETWORK = {
   solana: "solana",
@@ -164,6 +167,48 @@ function parseCoinGecko(raw, chain, at) {
   return dedupTop(rows.map((row) => coingeckoEntry(row, chain, at)));
 }
 
+// Chain-level short-window activity from ALL returned trending pools (zero extra API calls).
+// accel6h = (last-6h hourly rate) / (24h hourly rate) − 1 → is the last 6h running hotter than
+// the day average? A genuinely FRESH 6h signal, unlike DeFiLlama's 24h-over-24h change_1d.
+// Every field strict-guarded; whole aggregate is null if no volume windows are present.
+function aggregateChainActivity(rows, at) {
+  let v1 = 0;
+  let v6 = 0;
+  let v24 = 0;
+  let pxw6 = 0;
+  let pxwSum6 = 0;
+  let buys6 = 0;
+  let sells6 = 0;
+  let has6 = false;
+  let has24 = false;
+  for (const row of rows) {
+    const a = row?.attributes ?? {};
+    const vol1 = strictNumber(a.volume_usd?.h1);
+    const vol6 = strictNumber(a.volume_usd?.h6);
+    const vol24 = strictNumber(a.volume_usd?.h24);
+    if (vol1 !== null) v1 += vol1;
+    if (vol6 !== null) { v6 += vol6; has6 = true; }
+    if (vol24 !== null) { v24 += vol24; has24 = true; }
+    const px6 = strictNumber(a.price_change_percentage?.h6);
+    if (px6 !== null && vol6 !== null) { pxw6 += px6 * vol6; pxwSum6 += vol6; }
+    const buys = strictNumber(a.transactions?.h6?.buys);
+    const sells = strictNumber(a.transactions?.h6?.sells);
+    if (buys !== null) buys6 += buys;
+    if (sells !== null) sells6 += sells;
+  }
+  if (!has6 && !has24) return null;
+  return {
+    vol1h: v1 || null,
+    vol6h: v6 || null,
+    vol24h: v24 || null,
+    accel6h: has6 && has24 && v24 > 0 ? round((v6 / 6) / (v24 / 24) - 1, 4) : null,
+    accel1h: has6 && v1 > 0 && v6 > 0 ? round((v1 / 1) / (v6 / 6) - 1, 4) : null,
+    pxMom6h: pxwSum6 > 0 ? round(pxw6 / pxwSum6, 3) : null,
+    buyImb6h: buys6 + sells6 > 0 ? round((buys6 - sells6) / (buys6 + sells6), 3) : null,
+    at,
+  };
+}
+
 async function getJson(fetchImpl, url, label) {
   const response = await fetchImpl(url);
   if (!response.ok) throw new Error(`${label} HTTP ${response.status}`);
@@ -173,11 +218,11 @@ async function getJson(fetchImpl, url, label) {
 async function loadChainWatchlist(chain, fetchImpl, at) {
   try {
     const raw = await getJson(fetchImpl, geckoUrl(chain), `geckoterminal ${chain.id}`);
-    return parseGecko(raw, chain, at);
+    return { entries: parseGecko(raw, chain, at), activity: aggregateChainActivity(Array.isArray(raw?.data) ? raw.data : [], at) };
   } catch (geckoError) {
     try {
       const raw = await getJson(fetchImpl, coingeckoUrl(chain), `coingecko ${chain.id}`);
-      return parseCoinGecko(raw, chain, at);
+      return { entries: parseCoinGecko(raw, chain, at), activity: null }; // CoinGecko markets has no short-window pool volume
     } catch (fallbackError) {
       throw new Error(`${geckoError.message}; fallback ${fallbackError.message}`);
     }
@@ -187,16 +232,19 @@ async function loadChainWatchlist(chain, fetchImpl, at) {
 export async function loadDynamicWatchlist({ fetchImpl = fetch, chains = SUPPORTED_CHAINS, now = new Date() } = {}) {
   const at = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
   const perChain = Object.fromEntries(chains.map((chain) => [chain.id, []]));
+  const chainActivity = {};
   const errors = [];
 
   await Promise.all(chains.map(async (chain) => {
     try {
-      perChain[chain.id] = await loadChainWatchlist(chain, fetchImpl, at);
+      const { entries, activity } = await loadChainWatchlist(chain, fetchImpl, at);
+      perChain[chain.id] = entries;
+      if (activity) chainActivity[chain.id] = activity;
     } catch (error) {
       perChain[chain.id] = [];
       errors.push({ chain: chain.id, message: error.message });
     }
   }));
 
-  return { source: "geckoterminal-trending", perChain, errors };
+  return { source: "geckoterminal-trending", perChain, chainActivity, errors };
 }
