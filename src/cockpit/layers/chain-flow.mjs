@@ -111,18 +111,28 @@ function feesByChainMap(chainFees) {
   return new Map(rows.map((row) => [row.chain, row]));
 }
 
+const FEE_SPIKE_SHARE = 60; // 单一协议占该链 fee > 60% = 集中/尖刺(如出块/MEV builder),非广义链活动
+
 function feeMomentumForChain(entry) {
   const apps = Array.isArray(entry?.topApps) ? entry.topApps : [];
   let weighted = 0;
   let weightSum = 0;
+  let maxShare = 0;
+  let dominant = null;
   for (const app of apps) {
     const momentum = finite(app?.momentum);
     const share = finite(app?.share);
     if (momentum === null || share === null) continue;
     weighted += momentum * share;
     weightSum += share;
+    if (share > maxShare) { maxShare = share; dominant = app; }
   }
-  return weightSum > 0 ? round(weighted / weightSum, 3) : null;
+  if (weightSum <= 0) return { momentum: null, spikeShare: null, dominant: null };
+  return {
+    momentum: round(weighted / weightSum, 3),
+    spikeShare: maxShare >= FEE_SPIKE_SHARE ? round(maxShare, 0) : null,
+    dominant: maxShare >= FEE_SPIKE_SHARE ? (dominant?.protocol ?? null) : null,
+  };
 }
 
 // ── Multi-horizon composite direction ────────────────────────────────────────
@@ -170,11 +180,19 @@ function midScore(dexRow, feesEntry) {
   const dexVolChange1dPct = finite(dexRow?.dexVolChange1dPct);
   const dexScore = dexVolChange1dPct === null ? null
     : scoreFromDirection(signDirection(dexVolChange1dPct, { deadband: DEX_MOMENTUM_DEADBAND_PCT }), Math.min(Math.abs(dexVolChange1dPct) / 100, 1));
-  const feesMomentum = feeMomentumForChain(feesEntry);
-  const feeScore = feesMomentum === null ? null
-    : scoreFromDirection(signDirection(feesMomentum, { deadband: FEE_MOMENTUM_EPS }), Math.min(Math.abs(feesMomentum), 1));
+  const fee = feeMomentumForChain(feesEntry);
+  let feeScore = fee.momentum === null ? null
+    : scoreFromDirection(signDirection(fee.momentum, { deadband: FEE_MOMENTUM_EPS }), Math.min(Math.abs(fee.momentum), 1));
+  // 单一协议主导 fee(如以太坊 Titan Builder 出块/MEV)→ 按集中度线性折价:60%→不折,100%→归零。
+  // 一个 builder 的手续费暴涨不是"热钱轮入这条链",不该把链抬成头号目的地。
+  let feeSpike = null;
+  if (fee.spikeShare !== null && feeScore !== null) {
+    const factor = clamp((100 - fee.spikeShare) / 40, 0, 1);
+    feeScore = round(feeScore * factor, 4);
+    feeSpike = { protocol: fee.dominant, share: fee.spikeShare, discount: round(1 - factor, 2) };
+  }
   const score = blend([{ weight: 0.6, score: dexScore }, { weight: 0.4, score: feeScore }]);
-  return { score, dexVolChange1dPct, feesMomentum };
+  return { score, dexScore, feeScore, dexVolChange1dPct, feesMomentum: fee.momentum, feeSpike };
 }
 
 function applyComposite(component, { dexVolumeByChain, feesByChain, activityByChain }) {
@@ -192,6 +210,7 @@ function applyComposite(component, { dexVolumeByChain, feesByChain, activityByCh
     ...component,
     dexVolChange1dPct: mid.dexVolChange1dPct,
     feesMomentum: mid.feesMomentum,
+    feeSpike: mid.feeSpike,
     accel6h: fast.accel6h,
     accel1h: fast.accel1h,
     pxMom6h: fast.pxMom6h,
@@ -201,10 +220,17 @@ function applyComposite(component, { dexVolumeByChain, feesByChain, activityByCh
     compositeScore: composite === null ? null : round(composite, 4),
   };
   if (composite === null) return enriched;
+  const direction = composite > COMPOSITE_FLAT ? "inflow" : composite < -COMPOSITE_FLAT ? "outflow" : "flat";
+  // 入向驱动分类:只要交易面(6h快 + 24hDEX)有实质正贡献就算「交易热钱」;交易冷/负、纯靠
+  // 费用才撑起入向 → 「费用驱动」(ETH 那种 DEX 在降、只靠出块费用的假象)。
+  const posTrading = Math.max(0, fast.score ?? 0) + Math.max(0, mid.dexScore ?? 0);
+  const posFee = Math.max(0, mid.feeScore ?? 0);
+  const flowType = direction !== "inflow" ? null : posTrading > 0.05 ? "trading" : posFee > 0 ? "fee" : "trading";
   return {
     ...enriched,
-    direction: composite > COMPOSITE_FLAT ? "inflow" : composite < -COMPOSITE_FLAT ? "outflow" : "flat",
+    direction,
     strength: clamp(round(Math.abs(composite) * 100, 0)),
+    flowType,
   };
 }
 
@@ -295,27 +321,25 @@ const EDGE_OUT_MAX = -0.05;
 function compositeRotationEdges(components) {
   const scored = components.filter((c) => Number.isFinite(c.compositeScore));
   if (scored.length < 2) return { edges: [], inflow: null, outflow: null };
-  const inflow = [...scored].sort((a, b) => b.compositeScore - a.compositeScore)[0];
-  const outflow = [...scored].sort((a, b) => a.compositeScore - b.compositeScore)[0];
-  if (inflow.chain === outflow.chain
-    || !(inflow.compositeScore > EDGE_IN_MIN && outflow.compositeScore < EDGE_OUT_MAX)) {
-    return { edges: [], inflow: null, outflow: null };
-  }
-  const midConfirms = (inflow.midScore ?? 0) > 0 && (outflow.midScore ?? 0) < 0;
-  const slowFollow = (inflow.slowScore ?? 0) > 0 && (outflow.slowScore ?? 0) < 0;
-  return {
-    edges: [{
-      from: outflow.chain,
-      to: inflow.chain,
-      type: "chain",
-      strength: clamp(round((inflow.compositeScore - outflow.compositeScore) * 50, 0)),
-      confidence: edgeConfidence(inflow, outflow),
-      stage: midConfirms ? "confirmed" : "early",
-      slowFollow,
-    }],
-    inflow,
-    outflow,
-  };
+  const outflow = [...scored].sort((a, b) => a.compositeScore - b.compositeScore)[0]; // weakest = 来源
+  if (outflow.compositeScore >= EDGE_OUT_MAX) return { edges: [], inflow: null, outflow: null };
+  // ALL inflow destinations, not just the strongest — a fan-out (SOL→ETH AND SOL→BSC) must be
+  // fully visible; the old single-edge map hid BSC behind whichever chain scored highest.
+  const dests = scored
+    .filter((c) => c.chain !== outflow.chain && c.compositeScore > EDGE_IN_MIN)
+    .sort((a, b) => b.compositeScore - a.compositeScore);
+  const edges = dests.map((dst) => ({
+    from: outflow.chain,
+    to: dst.chain,
+    type: "chain",
+    strength: clamp(round((dst.compositeScore - outflow.compositeScore) * 50, 0)),
+    confidence: edgeConfidence(dst, outflow),
+    stage: (dst.midScore ?? 0) > 0 && (outflow.midScore ?? 0) < 0 ? "confirmed" : "early",
+    slowFollow: (dst.slowScore ?? 0) > 0 && (outflow.slowScore ?? 0) < 0,
+    flowType: dst.flowType ?? null, // "trading" 交易热钱 | "fee" 费用驱动
+    feeSpike: dst.feeSpike ?? null,
+  }));
+  return { edges, inflow: dests[0] ?? null, outflow };
 }
 
 // Legacy rotation on raw stablecoin share deltas — kept for the non-enhanced call path

@@ -285,9 +285,10 @@ function render(d) {
     conclusionPanel(d),
     trustBar(d),
     rotationPanel(d),
+    chainPanel(d),
     guidancePanel(d),
-    `<div class="grid two">${launchpadPanel(d)}${chainPanel(d)}</div>`,
-    `<div class="grid two">${dexcexPanel(d)}${narrativePanel(d)}</div>`,
+    `<div class="grid two">${launchpadPanel(d)}${dexcexPanel(d)}</div>`,
+    narrativePanel(d),
     macroPanel(d),
     appRevenuePanel(d),
     healthPanel(d),
@@ -390,6 +391,14 @@ function persistenceBadge(p) {
   const cls = p.label.startsWith("结构性") ? "up" : p.label.startsWith("升温") ? "warn" : p.label.startsWith("闪现") ? "down" : "muted";
   const hrs = p.hours ? `·${p.hours}h` : "";
   return ` <span class="${cls}">持续性:${esc(p.label)}${hrs}${arrow}</span>`;
+}
+
+// 交易热钱(6h/24hDEX 放量)vs 费用驱动(交易冷、靠协议费用);费用尖刺=单协议主导已折价。
+function flowTypeBadge(e) {
+  if (e.type !== "chain" || !e.flowType) return "";
+  const trading = e.flowType === "trading";
+  const spike = e.feeSpike ? ` <span class="warn">⚠${esc(e.feeSpike.protocol ?? "单协议")}${esc(e.feeSpike.share)}%</span>` : "";
+  return ` <span class="${trading ? "up" : "warn"}">[${trading ? "交易热钱" : "费用驱动"}]</span>${spike}`;
 }
 
 function chainConclusionLine(d) {
@@ -712,7 +721,7 @@ function edgeDerivation(d, e) {
     const stage = e.stage === "confirmed" ? "已确认(6h+24h 两端同向)" : e.stage === "early" ? "早期(仅 6h 快信号,24h 未确认)" : "—";
     const p = e.persistence;
     return `<div class="sector-deriv"><div><strong>链轮动 ${esc(chainLabel(e.from))}→${esc(chainLabel(e.to))}</strong> — 按综合分选端点(fast6h×0.45 + mid24h×0.35 + slow存量×0.20;非对称阈值 入>+0.15 出<−0.05)。</div>
-      <div class="muted">目的地 ${esc(chainLabel(e.to))}:${horizon(at(e.to))}<br/>来源 ${esc(chainLabel(e.from))}:${horizon(at(e.from))}<br/>分级:${stage};慢钱跟进:${e.slowFollow ? "是" : "否"}${p && p.label ? `;持续性:${esc(p.label)}${p.hours ? "·" + esc(p.hours) + "h" : ""}` : ""}</div></div>`;
+      <div class="muted">目的地 ${esc(chainLabel(e.to))}:${horizon(at(e.to))}<br/>来源 ${esc(chainLabel(e.from))}:${horizon(at(e.from))}<br/>驱动:${e.flowType === "trading" ? '<span class="up">交易热钱</span>(6h/24h DEX 放量)' : e.flowType === "fee" ? '<span class="warn">费用驱动</span>(交易未放量、靠协议费用)' : "—"}${e.feeSpike ? ` · <span class="warn">⚠ 费用集中于 ${esc(e.feeSpike.protocol ?? "单协议")} ${esc(e.feeSpike.share)}%,已折价 ${esc(Math.round((e.feeSpike.discount ?? 0) * 100))}%</span>` : ""}<br/>分级:${stage};慢钱跟进:${e.slowFollow ? "是" : "否"}${p && p.label ? `;持续性:${esc(p.label)}${p.hours ? "·" + esc(p.hours) + "h" : ""}` : ""}</div></div>`;
   }
   if (e.type === "sector") {
     const dst = (d.layers?.narrative?.components ?? []).find((c) => c.sector === e.to) ?? {};
@@ -745,7 +754,7 @@ function rotationPanel(d) {
   const edges = d.flowState?.rotationEdges ?? [];
   const label = (t) => (["solana", "ethereum", "base", "bsc"].includes(t) ? chainLabel(t) : t);
   const body = edges.length
-    ? `<ul>${edges.map((e) => `<li class="edge">${esc(label(e.from))} → ${esc(label(e.to))} ${e.type === "chain" ? rotationStageBadge(e) + persistenceBadge(e.persistence) : ""} <span class="muted">(${esc(e.type)}, 强度 ${esc(e.strength)}, ${esc(e.confidence)})</span></li>`).join("")}</ul>${rotationDerivation(d, edges)}`
+    ? `<ul>${edges.map((e) => `<li class="edge">${esc(label(e.from))} → ${esc(label(e.to))} ${e.type === "chain" ? rotationStageBadge(e) + flowTypeBadge(e) + persistenceBadge(e.persistence) : ""} <span class="muted">(${esc(e.type)}, 强度 ${esc(e.strength)}, ${esc(e.confidence)})</span></li>`).join("")}</ul>${rotationDerivation(d, edges)}`
     : `<p class="muted">暂无显著轮动边。${(d.meta?.historyPoints ?? 0) < 2 ? "(历史点不足,需累积多次采集后才能判断迁移)" : ""}</p>`;
   return `<div class="panel"><h2>轮动地图 · 资金往哪轮</h2>${body}</div>`;
 }

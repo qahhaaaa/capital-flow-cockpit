@@ -19,6 +19,25 @@ test("chain persistence: thin history is honest 积累中; broad+long+slow-follo
   assert.equal(structural.label, "结构性(多日)");
 });
 
+test("chain-flow fee de-noise: single-protocol fee spike (block-builder/MEV) is discounted, not dominant", () => {
+  const flat = (b) => [b, b, b, b, b, b, b, b];
+  // ETH-like miss: DEX volume FALLING (−25%) but one builder's fees exploding at 90% share.
+  // Without the spike discount this reads as a strong inflow (fee-inflated); with it, falling
+  // trading is no longer masked → not a strong inflow.
+  const signal = computeChainFlowSignal(
+    [{ chain: "ethereum", label: "ETH", shareSeries: flat(50) }],
+    {
+      dexVolume: { perChain: [{ chain: "ethereum", dexVolChange1dPct: -25 }] },
+      chainFees: { byChain: [{ chain: "ethereum", topApps: [{ protocol: "Titan Builder", share: 90, momentum: 4 }, { protocol: "other", share: 10, momentum: 0 }] }] },
+    },
+  );
+  const eth = signal.components.find((c) => c.chain === "ethereum");
+  assert.ok(eth.feeSpike);
+  assert.equal(eth.feeSpike.protocol, "Titan Builder");
+  assert.equal(eth.feeSpike.share, 90);
+  assert.notEqual(eth.direction, "inflow"); // spike discounted → falling trading not masked
+});
+
 test("chain persistence: flat composite -> 无显著流向, never a fabricated durability", () => {
   assert.equal(computeChainPersistence({ compositeScore: 0.01 }, []).label, "无显著流向");
 });
@@ -112,14 +131,15 @@ test("chain-flow composite rotation: fires SOL→BSC on flow divergence even whe
       { chain: "bsc", dexVolChange1dPct: 43 },
     ] },
     chainFees: { byChain: [
-      { chain: "solana", topApps: [{ protocol: "pump.fun", share: 100, momentum: -0.1 }] },
-      { chain: "bsc", topApps: [{ protocol: "four.meme", share: 100, momentum: 2.9 }] },
+      { chain: "solana", topApps: [{ protocol: "pump.fun", share: 45, momentum: -0.1 }, { protocol: "PumpSwap", share: 30, momentum: -0.1 }] },
+      { chain: "bsc", topApps: [{ protocol: "four.meme", share: 30, momentum: 2.9 }, { protocol: "GMGN", share: 25, momentum: 2.9 }] },
     ] },
   });
   assert.equal(signal.rotationEdges.length, 1);
   const edge = signal.rotationEdges[0];
   assert.equal(edge.from, "solana");
   assert.equal(edge.to, "bsc");
+  assert.equal(edge.flowType, "trading"); // BSC 由 24h DEX +43% 交易驱动,非费用
   assert.equal(edge.stage, "confirmed"); // 24h DEX+fees agree at both ends
   assert.equal(edge.slowFollow, false); // stablecoin supply hasn't followed yet
   assert.equal(signal.direction, "rotating");
@@ -147,7 +167,7 @@ test("chain-flow composite: missing DEX component is omitted from weights, never
         byChain: [
           {
             chain: "solana",
-            topApps: [{ protocol: "App", revenue24h: 1000, revenue7d: 14000, share: 100, momentum: -1 }],
+            topApps: [{ protocol: "App", revenue24h: 1000, revenue7d: 14000, share: 45, momentum: -1 }, { protocol: "App2", share: 30, momentum: -1 }],
           },
         ],
       },
