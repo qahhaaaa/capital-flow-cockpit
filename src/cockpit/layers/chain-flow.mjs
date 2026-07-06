@@ -311,7 +311,8 @@ function buildBaseComponents(perChainSeries, chains) {
 // Edge thresholds (composite score, −1..1). Asymmetric on purpose: the DESTINATION must
 // be a clear inflow, but a net-negative SOURCE is enough — a strong "money is going HERE"
 // with a mild "leaving THERE" is a real rotation (SOL was only mildly negative, BSC strong).
-const EDGE_IN_MIN = 0.15;
+// 目的地阈值 0.10(费用驱动的边已被过滤掉,交易型目的地在 0.10+ 即为真实轮入,不必再抬到 0.15)。
+const EDGE_IN_MIN = 0.1;
 const EDGE_OUT_MAX = -0.05;
 
 // Rotation from the COMPOSITE signal (fast+mid+slow), not raw stablecoin share. Two-tier
@@ -323,10 +324,12 @@ function compositeRotationEdges(components) {
   if (scored.length < 2) return { edges: [], inflow: null, outflow: null };
   const outflow = [...scored].sort((a, b) => a.compositeScore - b.compositeScore)[0]; // weakest = 来源
   if (outflow.compositeScore >= EDGE_OUT_MAX) return { edges: [], inflow: null, outflow: null };
-  // ALL inflow destinations, not just the strongest — a fan-out (SOL→ETH AND SOL→BSC) must be
-  // fully visible; the old single-edge map hid BSC behind whichever chain scored highest.
+  // ALL trading-driven inflow destinations. Fee-driven inflows (flowType "fee" — e.g. ETH lifted
+  // by a block-builder's fees while its trading falls) are FILTERED OUT of the rotation map: they
+  // are not real hot-money rotation. They stay visible in the L2 chain table (with the fee-spike
+  // flag) for cross-reference, just not drawn as a rotation edge.
   const dests = scored
-    .filter((c) => c.chain !== outflow.chain && c.compositeScore > EDGE_IN_MIN)
+    .filter((c) => c.chain !== outflow.chain && c.compositeScore > EDGE_IN_MIN && c.flowType !== "fee")
     .sort((a, b) => b.compositeScore - a.compositeScore);
   const edges = dests.map((dst) => ({
     from: outflow.chain,

@@ -528,26 +528,40 @@ function macroPanel(d) {
   </div>`;
 }
 
+// 每链持续性(可持续热度)紧凑徽章:结构性>升温>闪现,+已持续Nh + 动量箭头。
+function persistCell(p) {
+  if (!p || !p.label || p.label === "无显著流向") return "—";
+  const cls = p.label.startsWith("结构性") ? "up" : p.label.startsWith("升温") ? "warn" : p.label.startsWith("闪现") ? "down" : "muted";
+  const arrow = p.momentum === "building" ? "↑" : p.momentum === "fading" ? "↓" : "";
+  return `<span class="${cls}">${esc(p.label)}${p.hours ? "·" + esc(p.hours) + "h" : ""}${arrow}</span>`;
+}
+
 function chainPanel(d) {
   const comps = d.layers?.chain?.components ?? [];
   const dexCell = (v) => (v === null || v === undefined ? "—" : `<span class="${v > 3 ? "up" : v < -3 ? "down" : "flat"}">${pctSigned(v)}</span>`);
-  const feeCell = (v) => (v === null || v === undefined ? "—" : `<span class="${v > 0.05 ? "up" : v < -0.05 ? "down" : "flat"}">${v > 0 ? "+" : ""}${(Number(v) * 100).toFixed(0)}%</span>`);
+  const feeCell = (c) => {
+    const v = c.feesMomentum;
+    const base = v === null || v === undefined ? "—" : `<span class="${v > 0.05 ? "up" : v < -0.05 ? "down" : "flat"}">${v > 0 ? "+" : ""}${(Number(v) * 100).toFixed(0)}%</span>`;
+    return base + (c.feeSpike ? ` <span class="warn" title="单协议 ${esc(c.feeSpike.protocol ?? "")} 主导费用 ${esc(c.feeSpike.share)}%,已折价">⚠</span>` : "");
+  };
+  const dirCell = (c) => `<span class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</span>${c.flowType === "fee" ? ' <span class="warn">费用</span>' : c.flowType === "trading" ? ' <span class="up">交易</span>' : ""}`;
   const rows = comps.length
     ? comps.map((c) => `<tr>
         <td>${esc(c.label ?? c.chain)}</td>
         <td class="num">${pct(c.shareNow)}</td>
         <td class="num ${dirClass(c.direction)}">${c.shareDeltaPp === null || c.shareDeltaPp === undefined ? "—" : `${c.shareDeltaPp > 0 ? "+" : ""}${Number(c.shareDeltaPp).toFixed(3)}pp`}</td>
         <td class="num">${dexCell(c.dexVolChange1dPct)}</td>
-        <td class="num">${feeCell(c.feesMomentum)}</td>
-        <td class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</td>
+        <td class="num">${feeCell(c)}</td>
+        <td>${dirCell(c)}</td>
+        <td>${persistCell(c.persistence)}</td>
         <td>${qBadge(c.dataQuality)}</td>
       </tr>`).join("")
-    : `<tr><td colspan="7" class="muted">链间层无数据(provider 失败或未采集)。</td></tr>`;
+    : `<tr><td colspan="8" class="muted">链间层无数据(provider 失败或未采集)。</td></tr>`;
   return `<div class="panel">
     <h2>L2 链间资金流动 · 份额+DEX量+费用</h2>
     <div class="how">${esc(HOW.chain)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>链</th><th class="num">份额</th><th class="num">份额Δ</th><th class="num">DEX量1d</th><th class="num">费用动量</th><th>方向</th><th>数据</th></tr></thead>
+      <thead><tr><th>链</th><th class="num">份额</th><th class="num">份额Δ</th><th class="num">DEX量1d</th><th class="num">费用动量</th><th>方向</th><th>持续性</th><th>数据</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`)}
   </div>`;
