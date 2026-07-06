@@ -1,6 +1,8 @@
 # CHANGELOG
 
-## 2026-07-06
+## 2026-07-06(下午)
+
+- **轮动治本:边改用综合信号选端点(修 SOL→BSC 漏判)**: 轮动边原来只按"稳定币供应份额(存量)"选端点并卡阈值,存量 intraday 几乎不动 → 昨天 SOL 冷/BSC 热(DEX −11%/+43%、费用背离)明明白白却画不出边。改为按**多时间轴综合分**(fast 6h / mid 24h / slow 存量 = 0.45/0.35/0.20,缺失层归一化)选端点;非对称阈值(目的地 >+0.15、来源 <−0.05);边分两级 **stage: early(仅快信号)/ confirmed(24h 确认)** + slowFollow(慢钱是否跟进)。真实数据实测:`SOL→BSC 已确认` 现在会亮(strength 24)。前端结论卡链间行+轮动地图显示分级徽章。fast(6h)入口(chainActivity)已在 chain-flow 留好,GT 聚合快信号(P-B)与持续性(P-C)随后接。向后兼容:无 activity 时退回 mid+slow,无任何增强参数时退回旧存量边。类型: 修复/修改。文件: `src/cockpit/layers/chain-flow.mjs`, `public/main.js`, `tests/cockpit-chain-flow.test.mjs`。测试 126→127。
 
 - **标的详情加 GMGN 跳转**: 合约地址行新增「GMGN ↗」外链(`gmgn.ai/{sol|eth|base|bsc}/token/{ca}`,链 slug 映射,仅有 CA 且已知链时显示;`target=_blank rel=noopener noreferrer`)。纯展示。文件: `public/main.js`, `public/index.html`。
 

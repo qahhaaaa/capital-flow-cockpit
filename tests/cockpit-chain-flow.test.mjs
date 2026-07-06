@@ -80,36 +80,49 @@ test("chain-flow signal: short/absent history degrades confidence and never fabr
   assert.notEqual(signal.confidence, "high");
 });
 
-test("chain-flow enhancement: rotation edge requires share delta and DEX volume double confirmation", () => {
+test("chain-flow composite rotation: fires SOL→BSC on flow divergence even when stablecoin share is flat (2026-07-05 bug)", () => {
+  // The real miss: SOL cooling (DEX -11%, fees down) vs BSC hot money (DEX +43%, fees +2.9),
+  // while stablecoin SUPPLY share barely moved (inside deadband). The old edge keyed on share
+  // delta and drew nothing; the composite must draw SOL→BSC, confirmed by the 24h horizon.
+  const flat = (b) => [b, b + 0.0002, b + 0.0001, b, b + 0.0003, b, b + 0.0001, b + 0.0002];
   const series = [
-    { chain: "solana", label: "SOL", shareSeries: [4.0, 4.1, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2] },
-    { chain: "ethereum", label: "ETH 主网", shareSeries: [52, 51.8, 51.5, 51.2, 51, 50.7, 50.4, 50.0] },
+    { chain: "solana", label: "SOL", shareSeries: flat(4.98) },
+    { chain: "bsc", label: "BSC", shareSeries: flat(4.5) },
   ];
-
-  const confirmed = computeChainFlowSignal(series, {
-    dexVolume: {
-      perChain: [
-        { chain: "solana", dexVol24hUsd: 1000, dexVolChange1dPct: 12 },
-        { chain: "ethereum", dexVol24hUsd: 1000, dexVolChange1dPct: -8 },
-      ],
-    },
+  const signal = computeChainFlowSignal(series, {
+    dexVolume: { perChain: [
+      { chain: "solana", dexVolChange1dPct: -11 },
+      { chain: "bsc", dexVolChange1dPct: 43 },
+    ] },
+    chainFees: { byChain: [
+      { chain: "solana", topApps: [{ protocol: "pump.fun", share: 100, momentum: -0.1 }] },
+      { chain: "bsc", topApps: [{ protocol: "four.meme", share: 100, momentum: 2.9 }] },
+    ] },
   });
-  assert.equal(confirmed.rotationEdges.length, 1);
-  assert.equal(confirmed.rotationEdges[0].from, "ethereum");
-  assert.equal(confirmed.rotationEdges[0].to, "solana");
-
-  const contradicted = computeChainFlowSignal(series, {
-    dexVolume: {
-      perChain: [
-        { chain: "solana", dexVol24hUsd: 1000, dexVolChange1dPct: 12 },
-        { chain: "ethereum", dexVol24hUsd: 1000, dexVolChange1dPct: 8 },
-      ],
-    },
-  });
-  assert.equal(contradicted.rotationEdges.length, 0);
+  assert.equal(signal.rotationEdges.length, 1);
+  const edge = signal.rotationEdges[0];
+  assert.equal(edge.from, "solana");
+  assert.equal(edge.to, "bsc");
+  assert.equal(edge.stage, "confirmed"); // 24h DEX+fees agree at both ends
+  assert.equal(edge.slowFollow, false); // stablecoin supply hasn't followed yet
+  assert.equal(signal.direction, "rotating");
 });
 
-test("chain-flow enhancement: missing DEX component is omitted from weights, never treated as zero", () => {
+test("chain-flow composite rotation: fast-only(6h) divergence is an EARLY (unconfirmed) edge", () => {
+  const flat = (b) => [b, b, b, b, b, b, b, b];
+  const series = [
+    { chain: "solana", label: "SOL", shareSeries: flat(4.98) },
+    { chain: "bsc", label: "BSC", shareSeries: flat(4.5) },
+  ];
+  const signal = computeChainFlowSignal(series, {
+    chainActivity: { solana: { accel6h: -0.5 }, bsc: { accel6h: 0.6 } },
+  });
+  assert.equal(signal.rotationEdges.length, 1);
+  assert.equal(signal.rotationEdges[0].to, "bsc");
+  assert.equal(signal.rotationEdges[0].stage, "early"); // no 24h horizon to confirm yet
+});
+
+test("chain-flow composite: missing DEX component is omitted from weights, never treated as zero", () => {
   const signal = computeChainFlowSignal(
     [{ chain: "solana", label: "SOL", shareSeries: [4.0, 4.1, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2] }],
     {
@@ -125,9 +138,10 @@ test("chain-flow enhancement: missing DEX component is omitted from weights, nev
   );
 
   const sol = signal.components.find((component) => component.chain === "solana");
-  assert.equal(sol.dexVolChange1dPct, null);
+  assert.equal(sol.dexVolChange1dPct, null); // DEX omitted, NOT coerced to 0
   assert.equal(sol.feesMomentum, -1);
-  assert.equal(sol.direction, "inflow");
+  // fee momentum(-1, weight 0.35) now outweighs the down-weighted stablecoin share(+, 0.20) -> outflow
+  assert.equal(sol.direction, "outflow");
 });
 
 test("chain-flow enhancement: old call signature remains byte-compatible", () => {

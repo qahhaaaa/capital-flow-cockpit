@@ -125,39 +125,84 @@ function feeMomentumForChain(entry) {
   return weightSum > 0 ? round(weighted / weightSum, 3) : null;
 }
 
-function applyEnhancedDirection(component, { dexVolumeByChain, feesByChain }) {
-  const dexRow = dexVolumeByChain.get(component.chain);
+// ── Multi-horizon composite direction ────────────────────────────────────────
+// Rotation is a FLOW/activity event; stablecoin *supply* share (存量) barely moves
+// intraday, so it must NOT dominate (the old 0.5 share weight is exactly why the
+// SOL→BSC rotation of 2026-07-05 — obvious in DEX volume/fees — was never drawn).
+// Blend three horizons — fast(6h) / mid(24h) / slow(存量) — at 0.45 / 0.35 / 0.20,
+// renormalising over whatever is present (fast absent until the GT aggregate lands).
+const HORIZON_WEIGHTS = { fast: 0.45, mid: 0.35, slow: 0.2 };
+const COMPOSITE_FLAT = 0.05;
+const ACCEL_DEADBAND = 0.1; // 6h vs 24h-avg volume acceleration deadband (±10%)
+
+// Weighted mean over non-null scores, weights renormalised; null when none present.
+function blend(parts) {
+  const live = parts.filter((p) => p.score !== null && Number.isFinite(p.score));
+  if (live.length === 0) return null;
+  const wSum = live.reduce((sum, p) => sum + p.weight, 0);
+  return live.reduce((sum, p) => sum + p.score * (p.weight / wSum), 0);
+}
+
+function activityMap(chainActivity) {
+  return chainActivity && typeof chainActivity === "object" ? new Map(Object.entries(chainActivity)) : new Map();
+}
+
+// Fast horizon: GeckoTerminal 6h volume acceleration (main) + price momentum + buy imbalance.
+function fastScore(activity) {
+  const accel6h = finite(activity?.accel6h);
+  const pxMom6h = finite(activity?.pxMom6h);
+  const buyImb6h = finite(activity?.buyImb6h);
+  const accelScore = accel6h === null ? null
+    : scoreFromDirection(signDirection(accel6h, { deadband: ACCEL_DEADBAND }), Math.min(Math.abs(accel6h), 1));
+  const pxScore = pxMom6h === null ? null : clamp(pxMom6h / 20, -1, 1);
+  const imbScore = buyImb6h === null ? null : clamp(buyImb6h, -1, 1);
+  const score = blend([
+    { weight: 0.6, score: accelScore },
+    { weight: 0.25, score: pxScore },
+    { weight: 0.15, score: imbScore },
+  ]);
+  return { score, accel6h, pxMom6h };
+}
+
+// Mid horizon: DeFiLlama 24h DEX volume change + protocol-fee momentum.
+function midScore(dexRow, feesEntry) {
   const dexVolChange1dPct = finite(dexRow?.dexVolChange1dPct);
-  const dexDirection = signDirection(dexVolChange1dPct, { deadband: DEX_MOMENTUM_DEADBAND_PCT });
-  const dexScore = dexVolChange1dPct === null
-    ? null
-    : scoreFromDirection(dexDirection, Math.min(Math.abs(dexVolChange1dPct) / 100, 1));
+  const dexScore = dexVolChange1dPct === null ? null
+    : scoreFromDirection(signDirection(dexVolChange1dPct, { deadband: DEX_MOMENTUM_DEADBAND_PCT }), Math.min(Math.abs(dexVolChange1dPct) / 100, 1));
+  const feesMomentum = feeMomentumForChain(feesEntry);
+  const feeScore = feesMomentum === null ? null
+    : scoreFromDirection(signDirection(feesMomentum, { deadband: FEE_MOMENTUM_EPS }), Math.min(Math.abs(feesMomentum), 1));
+  const score = blend([{ weight: 0.6, score: dexScore }, { weight: 0.4, score: feeScore }]);
+  return { score, dexVolChange1dPct, feesMomentum };
+}
 
-  const feesMomentum = feeMomentumForChain(feesByChain.get(component.chain));
-  const feeDirection = signDirection(feesMomentum, { deadband: FEE_MOMENTUM_EPS });
-  const feeScore = feesMomentum === null ? null : scoreFromDirection(feeDirection, Math.min(Math.abs(feesMomentum), 1));
-
-  const shareScore = Number.isFinite(component.shareDeltaPp)
+function applyComposite(component, { dexVolumeByChain, feesByChain, activityByChain }) {
+  const fast = fastScore(activityByChain.get(component.chain));
+  const mid = midScore(dexVolumeByChain.get(component.chain), feesByChain.get(component.chain));
+  const slow = Number.isFinite(component.shareDeltaPp)
     ? scoreFromDirection(component.direction, (component.strength ?? 0) / 100)
     : null;
-  const parts = [
-    { weight: 0.5, score: shareScore },
-    { weight: 0.3, score: dexScore },
-    { weight: 0.2, score: feeScore },
-  ].filter((part) => part.score !== null);
-
-  if (parts.length === 0) return { ...component, dexVolChange1dPct, feesMomentum };
-
-  const weightSum = parts.reduce((sum, part) => sum + part.weight, 0);
-  const weightedScore = parts.reduce((sum, part) => sum + part.score * (part.weight / weightSum), 0);
-  const direction = weightedScore > 0.01 ? "inflow" : weightedScore < -0.01 ? "outflow" : "flat";
-
-  return {
+  const composite = blend([
+    { weight: HORIZON_WEIGHTS.fast, score: fast.score },
+    { weight: HORIZON_WEIGHTS.mid, score: mid.score },
+    { weight: HORIZON_WEIGHTS.slow, score: slow },
+  ]);
+  const enriched = {
     ...component,
-    direction,
-    strength: clamp(round(Math.abs(weightedScore) * 100, 0)),
-    dexVolChange1dPct,
-    feesMomentum,
+    dexVolChange1dPct: mid.dexVolChange1dPct,
+    feesMomentum: mid.feesMomentum,
+    accel6h: fast.accel6h,
+    pxMom6h: fast.pxMom6h,
+    fastScore: fast.score === null ? null : round(fast.score, 4),
+    midScore: mid.score === null ? null : round(mid.score, 4),
+    slowScore: slow === null ? null : round(slow, 4),
+    compositeScore: composite === null ? null : round(composite, 4),
+  };
+  if (composite === null) return enriched;
+  return {
+    ...enriched,
+    direction: composite > COMPOSITE_FLAT ? "inflow" : composite < -COMPOSITE_FLAT ? "outflow" : "flat",
+    strength: clamp(round(Math.abs(composite) * 100, 0)),
   };
 }
 
@@ -235,51 +280,83 @@ function buildBaseComponents(perChainSeries, chains) {
   });
 }
 
-function canBuildEnhancedEdge(inflow, outflow) {
-  const inDex = signDirection(finite(inflow.dexVolChange1dPct), { deadband: DEX_MOMENTUM_DEADBAND_PCT });
-  const outDex = signDirection(finite(outflow.dexVolChange1dPct), { deadband: DEX_MOMENTUM_DEADBAND_PCT });
-  return inDex === "inflow" && outDex === "outflow";
+// Edge thresholds (composite score, −1..1). Asymmetric on purpose: the DESTINATION must
+// be a clear inflow, but a net-negative SOURCE is enough — a strong "money is going HERE"
+// with a mild "leaving THERE" is a real rotation (SOL was only mildly negative, BSC strong).
+const EDGE_IN_MIN = 0.15;
+const EDGE_OUT_MAX = -0.05;
+
+// Rotation from the COMPOSITE signal (fast+mid+slow), not raw stablecoin share. Two-tier
+// stage: `confirmed` when the 24h(mid) horizon agrees at both ends; `early` when only the
+// fast horizon drives it (heads-up, not yet confirmed). slowFollow = stablecoin supply has
+// begun to follow (the durable tell).
+function compositeRotationEdges(components) {
+  const scored = components.filter((c) => Number.isFinite(c.compositeScore));
+  if (scored.length < 2) return { edges: [], inflow: null, outflow: null };
+  const inflow = [...scored].sort((a, b) => b.compositeScore - a.compositeScore)[0];
+  const outflow = [...scored].sort((a, b) => a.compositeScore - b.compositeScore)[0];
+  if (inflow.chain === outflow.chain
+    || !(inflow.compositeScore > EDGE_IN_MIN && outflow.compositeScore < EDGE_OUT_MAX)) {
+    return { edges: [], inflow: null, outflow: null };
+  }
+  const midConfirms = (inflow.midScore ?? 0) > 0 && (outflow.midScore ?? 0) < 0;
+  const slowFollow = (inflow.slowScore ?? 0) > 0 && (outflow.slowScore ?? 0) < 0;
+  return {
+    edges: [{
+      from: outflow.chain,
+      to: inflow.chain,
+      type: "chain",
+      strength: clamp(round((inflow.compositeScore - outflow.compositeScore) * 50, 0)),
+      confidence: edgeConfidence(inflow, outflow),
+      stage: midConfirms ? "confirmed" : "early",
+      slowFollow,
+    }],
+    inflow,
+    outflow,
+  };
+}
+
+// Legacy rotation on raw stablecoin share deltas — kept for the non-enhanced call path
+// (tests/callers with no volume/fee/activity inputs), byte-compatible with the old logic.
+function legacyRotationEdges(baseComponents) {
+  const movers = baseComponents.filter((c) => Number.isFinite(c.shareDeltaPp));
+  const inflow = [...movers].sort((a, b) => b.shareDeltaPp - a.shareDeltaPp)[0];
+  const outflow = [...movers].sort((a, b) => a.shareDeltaPp - b.shareDeltaPp)[0];
+  if (!inflow || !outflow || inflow.chain === outflow.chain
+    || !(inflow.shareDeltaPp > FLAT_EPS_PP && outflow.shareDeltaPp < -FLAT_EPS_PP)) {
+    return { edges: [], inflow: null, outflow: null };
+  }
+  return {
+    edges: [{
+      from: outflow.chain,
+      to: inflow.chain,
+      type: "chain",
+      strength: clamp(round((inflow.shareDeltaPp - outflow.shareDeltaPp) * 50, 1)),
+      confidence: edgeConfidence(inflow, outflow),
+    }],
+    inflow,
+    outflow,
+  };
 }
 
 // Per-chain share time-series (chronological, oldest→newest) -> chain-flow LayerSignal.
 // Entries may carry `sharePoints` [{ts, share}] (time-anchored path) or a plain numeric
-// `shareSeries` (legacy adjacent-diff path). The series are assembled by the rolling-history
-// store; this function is pure.
-export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAINS, dexVolume, chainFees } = {}) {
-  const enhanced = dexVolume !== undefined || chainFees !== undefined;
+// `shareSeries` (legacy adjacent-diff path). Passing dexVolume/chainFees/chainActivity
+// switches on the multi-horizon composite + composite-driven rotation. Pure.
+export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAINS, dexVolume, chainFees, chainActivity } = {}) {
+  const enhanced = dexVolume !== undefined || chainFees !== undefined || chainActivity !== undefined;
   const baseComponents = buildBaseComponents(perChainSeries, chains);
   const components = enhanced
-    ? baseComponents.map((component) => applyEnhancedDirection(component, {
+    ? baseComponents.map((component) => applyComposite(component, {
         dexVolumeByChain: byChainMap(dexVolume),
         feesByChain: feesByChainMap(chainFees),
+        activityByChain: activityMap(chainActivity),
       }))
     : baseComponents;
 
-  const movers = baseComponents.filter((component) => Number.isFinite(component.shareDeltaPp));
-  const inflowBase = [...movers].sort((a, b) => b.shareDeltaPp - a.shareDeltaPp)[0];
-  const outflowBase = [...movers].sort((a, b) => a.shareDeltaPp - b.shareDeltaPp)[0];
-  const byEnhancedChain = new Map(components.map((component) => [component.chain, component]));
-  const inflow = inflowBase ? byEnhancedChain.get(inflowBase.chain) : null;
-  const outflow = outflowBase ? byEnhancedChain.get(outflowBase.chain) : null;
-
-  const rotationEdges = [];
-  if (
-    inflowBase &&
-    outflowBase &&
-    inflowBase.chain !== outflowBase.chain &&
-    inflowBase.shareDeltaPp > FLAT_EPS_PP &&
-    outflowBase.shareDeltaPp < -FLAT_EPS_PP &&
-    (!enhanced || canBuildEnhancedEdge(inflow, outflow))
-  ) {
-    const spread = inflowBase.shareDeltaPp - outflowBase.shareDeltaPp;
-    rotationEdges.push({
-      from: outflowBase.chain,
-      to: inflowBase.chain,
-      type: "chain",
-      strength: clamp(round(spread * 50, 1)),
-      confidence: edgeConfidence(inflowBase, outflowBase),
-    });
-  }
+  const { edges: rotationEdges, inflow, outflow } = enhanced
+    ? compositeRotationEdges(components)
+    : legacyRotationEdges(baseComponents);
 
   const okCount = components.filter((component) => component.dataQuality === "ok").length;
   const confidence = okCount >= chains.length ? "high" : okCount > 0 ? "medium" : "low";
@@ -299,8 +376,8 @@ export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAI
     components,
     rotationEdges,
     drivers: rotationEdges.length
-      ? [`${outflowBase.label} → ${inflowBase.label} 稳定币份额迁移`]
-      : ["四链稳定币份额无显著迁移"],
+      ? [`${outflow.label} → ${inflow.label} 资金轮动(${rotationEdges[0].stage === "confirmed" ? "已确认" : rotationEdges[0].stage === "early" ? "早期" : "存量迁移"})`]
+      : ["四链无显著资金轮动"],
     dataQuality,
   };
 }

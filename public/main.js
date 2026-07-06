@@ -375,13 +375,22 @@ function waterLine(d) {
   return conclusionLine("水位", `<span class="decision-main"><span class="badge b-${esc(r)}">${esc(REGIME_LABEL[r] ?? r)}</span><span>${esc(d.moneyLocation ?? "—")}</span>${agreementView(d.flowState?.agreement?.net)}${macroNote}</span>`);
 }
 
+// Rotation edge stage: 已确认(24h agrees)=green, 早期(fast-only heads-up)=yellow; slowFollow badge.
+function rotationStageBadge(edge) {
+  if (!edge || !edge.stage) return "";
+  const confirmed = edge.stage === "confirmed";
+  const follow = edge.slowFollow ? ' · <span class="up">慢钱跟进</span>' : "";
+  return `<span class="${confirmed ? "up" : "warn"}">【${confirmed ? "已确认" : "早期·待确认"}】</span>${follow}`;
+}
+
 function chainConclusionLine(d) {
   const chain = d.layers?.chain;
   if (layerMissing(chain)) return conclusionLine("链间", `<span class="muted">链间层数据缺失</span>`, "muted");
   const comps = chain.components ?? [];
+  // composite direction now (份额+DEX量+费用[+6h快]),不再只看稳定币存量份额
   const inflow = comps
-    .filter((c) => c.direction === "inflow" && Number.isFinite(Number(c.shareDeltaPp)))
-    .sort((a, b) => Number(b.shareDeltaPp) - Number(a.shareDeltaPp))[0];
+    .filter((c) => c.direction === "inflow")
+    .sort((a, b) => (b.strength ?? 0) - (a.strength ?? 0))[0];
   const allFlat = comps.length > 0 && comps.every((c) => ["flat", "unknown"].includes(c.direction));
   const inflections = comps
     .filter((c) => c.inflection === "up" || c.inflection === "down")
@@ -391,9 +400,9 @@ function chainConclusionLine(d) {
   const edges = (d.flowState?.rotationEdges ?? chain.rotationEdges ?? []).filter((e) => e?.type === "chain");
   const edge = edges[0];
   const main = inflow
-    ? `钱在流入 ${esc(inflow.label ?? inflow.chain)}(<span class="up">${esc(ppSigned(inflow.shareDeltaPp))}</span>)`
+    ? `钱在流入 ${esc(inflow.label ?? inflow.chain)}`
     : allFlat ? "链间无显著迁移" : "链间迁移方向不明";
-  const edgeText = edge ? ` · <span class="edge">轮动:${esc(edge.from)}→${esc(edge.to)}</span>` : "";
+  const edgeText = edge ? ` · <span class="edge">轮动 ${esc(chainLabel(edge.from))}→${esc(chainLabel(edge.to))}</span> ${rotationStageBadge(edge)}` : "";
   const warn = inflections.length ? ` · <span class="warn">⚠ 慢漂移拐点:${inflections.join(" ")}</span>` : "";
   return conclusionLine("链间", `${main}${edgeText}${warn}`);
 }
@@ -655,8 +664,9 @@ function dexcexPanel(d) {
 
 function rotationPanel(d) {
   const edges = d.flowState?.rotationEdges ?? [];
+  const label = (t) => (["solana", "ethereum", "base", "bsc"].includes(t) ? chainLabel(t) : t);
   const body = edges.length
-    ? `<ul>${edges.map((e) => `<li class="edge">${esc(e.from)} → ${esc(e.to)} <span class="muted">(${esc(e.type)}, 强度 ${esc(e.strength)}, ${esc(e.confidence)})</span></li>`).join("")}</ul>`
+    ? `<ul>${edges.map((e) => `<li class="edge">${esc(label(e.from))} → ${esc(label(e.to))} ${e.type === "chain" ? rotationStageBadge(e) : ""} <span class="muted">(${esc(e.type)}, 强度 ${esc(e.strength)}, ${esc(e.confidence)})</span></li>`).join("")}</ul>`
     : `<p class="muted">暂无显著轮动边。${(d.meta?.historyPoints ?? 0) < 2 ? "(历史点不足,需累积多次采集后才能判断迁移)" : ""}</p>`;
   return `<div class="panel"><h2>轮动地图</h2>${body}</div>`;
 }
