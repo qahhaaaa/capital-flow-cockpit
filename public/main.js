@@ -284,12 +284,12 @@ function render(d) {
   return [
     conclusionPanel(d),
     trustBar(d),
+    rotationPanel(d),
     guidancePanel(d),
     `<div class="grid two">${launchpadPanel(d)}${chainPanel(d)}</div>`,
     `<div class="grid two">${dexcexPanel(d)}${narrativePanel(d)}</div>`,
     macroPanel(d),
     appRevenuePanel(d),
-    rotationPanel(d),
     healthPanel(d),
     macroContextDetails(),
     `<footer><a href="./guide.html">📖 怎么看这张面板</a> · schema ${esc(d.schema)} · 更新于 ${esc(relTime(d.meta?.generatedAt))} · 历史点 ${esc(d.meta?.historyPoints ?? 0)}</footer>`,
@@ -702,13 +702,52 @@ function dexcexPanel(d) {
   </div>`;
 }
 
+// 单条轮动边的推导 + 支持数据(按边类型查各层组件)。
+function edgeDerivation(d, e) {
+  const pcp = (v) => (v === null || v === undefined ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`);
+  if (e.type === "chain") {
+    const cc = d.layers?.chain?.components ?? [];
+    const at = (chain) => cc.find((c) => c.chain === chain) ?? {};
+    const horizon = (c) => `综合 ${esc(c.compositeScore ?? "—")}(6h加速 ${esc(c.accel6h ?? "—")} · 24hDEX ${pcp(c.dexVolChange1dPct)} · 费用 ${esc(c.feesMomentum ?? "—")} · 存量Δ ${esc(c.shareDeltaPp ?? "—")}pp)`;
+    const stage = e.stage === "confirmed" ? "已确认(6h+24h 两端同向)" : e.stage === "early" ? "早期(仅 6h 快信号,24h 未确认)" : "—";
+    const p = e.persistence;
+    return `<div class="sector-deriv"><div><strong>链轮动 ${esc(chainLabel(e.from))}→${esc(chainLabel(e.to))}</strong> — 按综合分选端点(fast6h×0.45 + mid24h×0.35 + slow存量×0.20;非对称阈值 入>+0.15 出<−0.05)。</div>
+      <div class="muted">目的地 ${esc(chainLabel(e.to))}:${horizon(at(e.to))}<br/>来源 ${esc(chainLabel(e.from))}:${horizon(at(e.from))}<br/>分级:${stage};慢钱跟进:${e.slowFollow ? "是" : "否"}${p && p.label ? `;持续性:${esc(p.label)}${p.hours ? "·" + esc(p.hours) + "h" : ""}` : ""}</div></div>`;
+  }
+  if (e.type === "sector") {
+    const dst = (d.layers?.narrative?.components ?? []).find((c) => c.sector === e.to) ?? {};
+    const protos = (dst.topProtocols ?? []).map((x) => `${esc(x.name)} ${esc(usd(x.tvl))}`).join("、") || "—";
+    return `<div class="sector-deriv"><div><strong>板块轮动 ${esc(e.from)}→${esc(e.to)}</strong> — 最强(7d ${pcp(e.toChange)})← 最弱(7d ${pcp(e.fromChange)}),强度=两端差值 ${esc(e.strength)};方向按 ±2% 死区。</div>
+      <div class="muted">目的地成分(按 TVL):${protos}</div></div>`;
+  }
+  if (e.type === "launchpad") {
+    const lc = d.layers?.launchpad?.components ?? [];
+    const src = lc.find((c) => c.launchpad === e.from) ?? {};
+    const dst = lc.find((c) => c.launchpad === e.to) ?? {};
+    const mom = (v) => (v === null || v === undefined ? "—" : `${v > 0 ? "+" : ""}${(Number(v) * 100).toFixed(0)}%`);
+    return `<div class="sector-deriv"><div><strong>发射台轮动 ${esc(src.label ?? e.from)}→${esc(dst.label ?? e.to)}</strong> — 最热 ${esc(dst.label ?? e.to)}(动量 ${mom(dst.momentum)}·收入 ${esc(usd(dst.revenue24h))}·份额 ${esc(dst.share ?? "—")}%)← 最冷 ${esc(src.label ?? e.from)}(动量 ${mom(src.momentum)})。</div>
+      <div class="muted">体量门槛:两端 24h 收入≥$5万 且 份额≥1%(防微量动量鬼边),强度按小端份额缩放。</div></div>`;
+  }
+  return "";
+}
+
+function rotationDerivation(d, edges) {
+  if (!edges.length) return "";
+  return `<details class="deriv"><summary>推导过程 + 支持数据(点击展开)</summary>
+    <div class="deriv-body">
+      <div class="muted">轮动地图汇总各层的轮动边:链间(6h/24h/存量 多时间轴综合)· 板块(TVL 7d 相对强弱)· 发射台(收入动量 + 体量门槛)。逐条判定依据与端点数据:</div>
+      ${edges.map((e) => edgeDerivation(d, e)).join("")}
+    </div>
+  </details>`;
+}
+
 function rotationPanel(d) {
   const edges = d.flowState?.rotationEdges ?? [];
   const label = (t) => (["solana", "ethereum", "base", "bsc"].includes(t) ? chainLabel(t) : t);
   const body = edges.length
-    ? `<ul>${edges.map((e) => `<li class="edge">${esc(label(e.from))} → ${esc(label(e.to))} ${e.type === "chain" ? rotationStageBadge(e) + persistenceBadge(e.persistence) : ""} <span class="muted">(${esc(e.type)}, 强度 ${esc(e.strength)}, ${esc(e.confidence)})</span></li>`).join("")}</ul>`
+    ? `<ul>${edges.map((e) => `<li class="edge">${esc(label(e.from))} → ${esc(label(e.to))} ${e.type === "chain" ? rotationStageBadge(e) + persistenceBadge(e.persistence) : ""} <span class="muted">(${esc(e.type)}, 强度 ${esc(e.strength)}, ${esc(e.confidence)})</span></li>`).join("")}</ul>${rotationDerivation(d, edges)}`
     : `<p class="muted">暂无显著轮动边。${(d.meta?.historyPoints ?? 0) < 2 ? "(历史点不足,需累积多次采集后才能判断迁移)" : ""}</p>`;
-  return `<div class="panel"><h2>轮动地图</h2>${body}</div>`;
+  return `<div class="panel"><h2>轮动地图 · 资金往哪轮</h2>${body}</div>`;
 }
 
 const GUIDANCE_METRIC_FIELDS = [
