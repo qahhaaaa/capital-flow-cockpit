@@ -838,6 +838,10 @@ function guidanceDetailRow(g, index) {
           <div>顺风:${(g.tailwindLayers ?? []).length ? g.tailwindLayers.map((t) => `<span class="up">${esc(t.layer)}${t.reason ? `(${esc(t.reason)})` : ""}</span>`).join("、") : "—"}</div>
           <div style="margin-top:4px">逆风:${(g.headwindLayers ?? []).length ? g.headwindLayers.map((h) => `<span class="down">${esc(h.layer)}${h.reason ? `(${esc(h.reason)})` : ""}</span>`).join("、") : "—"}</div>
         </div>
+        <div>
+          <h3>风险标记${(g.riskFlags ?? []).length ? ` <span class="down">${esc(g.riskFlags.length)}</span>` : ""}</h3>
+          ${(g.riskFlags ?? []).length ? `<ul class="risk-list">${g.riskFlags.map((r) => `<li class="down">${esc(r)}</li>`).join("")}</ul>` : `<div class="muted">无</div>`}
+        </div>
         <div class="muted gap-note">持币人数/分时净流入：免费云端无源，标缺口（可本地 GMGN 补）。</div>
       </div>
     </td>
