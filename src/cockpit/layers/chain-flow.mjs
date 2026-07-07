@@ -450,7 +450,7 @@ export function computeChainPersistence(component, scoreSeries, { dexVolChange7d
   let label;
   if (pts.length < PERSIST_MIN_POINTS) label = "积累中";
   else if (breadth >= 3 && streak >= PERSIST_MIN_POINTS && slowFollow) label = "结构性(多日)";
-  else if (breadth >= 2 && momentum !== "fading") label = "升温(1-3d)";
+  else if (breadth >= 2 && momentum !== "fading") label = "持续(1-3d)"; // 方向中性(流入/流出都用),前端加方向前缀
   else label = "闪现(日内)";
 
   return { label, hours: streak, momentum, breadth, slowFollow, dataQuality: pts.length >= PERSIST_MIN_POINTS ? "ok" : "partial" };
