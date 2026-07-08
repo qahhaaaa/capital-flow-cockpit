@@ -10,7 +10,7 @@ const DIR_LABEL = {
   to_spot: "偏现货", to_perp: "偏合约", risk_on: "放水", risk_off: "收水", neutral: "中性",
   rotate_in: "轮入 ▲", rotate_out: "轮出 ▼", balanced: "均衡",
 };
-const CHAIN_LABEL = { solana: "SOL", ethereum: "ETH", base: "Base", bsc: "BSC" };
+const CHAIN_LABEL = { solana: "SOL", ethereum: "ETH", base: "Base", bsc: "BSC", robinhood: "Robinhood" };
 const dirClass = (d) => (["inflow", "heating", "rotate_in", "to_spot", "risk_on"].includes(d) ? "up"
   : ["outflow", "cooling", "rotate_out", "to_perp", "risk_off"].includes(d) ? "down" : "flat");
 
@@ -551,7 +551,18 @@ function persistCell(p, direction) {
 
 function chainPanel(d) {
   const comps = d.layers?.chain?.components ?? [];
-  const dexCell = (v) => (v === null || v === undefined ? "—" : `<span class="${v > 3 ? "up" : v < -3 ? "down" : "flat"}">${pctSigned(v)}</span>`);
+  const dexCell = (v, meta = {}) => {
+    if (v === null || v === undefined) return "—";
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "—";
+    const cls = n > 3 ? "up" : n < -3 ? "down" : "flat";
+    if (!meta.untrusted) return `<span class="${cls}">${pctSigned(n)}</span>`;
+    const raw = Number(meta.rawPct);
+    const rawText = Number.isFinite(raw) ? pctSigned(raw) : "异常值";
+    const marker = n > 0 ? "≫" : "≪";
+    const title = `原始 7d 变化 ${rawText}, 超过 ±1000%, 低基数导致失真`;
+    return `<span class="${cls}" title="${esc(title)}">${marker}${pctSigned(n)}</span> <span class="warn" title="${esc(title)}">${esc(meta.note ?? "新链·基数低")}</span>`;
+  };
   const feeCell = (c) => {
     const v = c.feesMomentum;
     const base = v === null || v === undefined ? "—" : `<span class="${v > 0.05 ? "up" : v < -0.05 ? "down" : "flat"}">${v > 0 ? "+" : ""}${(Number(v) * 100).toFixed(0)}%</span>`;
@@ -568,7 +579,7 @@ function chainPanel(d) {
         <td class="num" style="white-space:nowrap">${usd(c.dexVol24hUsd)}</td>
         <td class="num">${accelCell(c.accel6h)}</td>
         <td class="num">${dexCell(c.dexVolChange1dPct)}</td>
-        <td class="num">${dexCell(c.dexVolChange7dPct)}</td>
+        <td class="num">${dexCell(c.dexVolChange7dPct, { untrusted: c.dexVolChange7dUntrusted, rawPct: c.dexVolChange7dRawPct, note: c.dexVolChange7dNote })}</td>
         <td class="num">${feeCell(c)}</td>
         <td>${dirCell(c)}</td>
         <td>${persistCell(c.persistence, c.direction)}</td>
@@ -579,17 +590,17 @@ function chainPanel(d) {
     <h2>L2 链间资金流动 · 份额+DEX量+费用</h2>
     <div class="how">${esc(HOW.chain)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th title="公链(Solana/Base/以太坊/BSC)">链</th><th class="num" title="该链稳定币存量占四链总量的比例(存量,慢变量)">份额</th><th class="num" title="份额较上一快照的变化,pp=百分点;正=稳定币在往这条链搬(慢钱)">份额Δ</th><th class="num" title="24h DEX 绝对成交额(DeFiLlama)">量24h</th><th class="num" title="近6h成交 vs 全天均速的加速;免费源无12h,用6h替代">6h</th><th class="num" title="24h DEX 量环比(DeFiLlama change_1d)">24h</th><th class="num" title="7d DEX 量变化(DeFiLlama change_7d);免费源无3d,用7d替代">7d</th><th class="num" title="协议收入(DeFiLlama revenue)按占比加权的升温/降温;⚠=单协议占>60%已折价">费用动量</th><th title="多时间轴综合分判定;交易=真热钱放量,费用=仅靠协议费用">方向</th><th title="当前热度形态(非预测);前缀=方向,N/4窗=1h/6h/24h/7d同向数">持续性</th><th title="ok=全源到位 / partial=部分缺 / missing=全缺">数据</th></tr></thead>
+      <thead><tr><th title="公链(Solana/Base/以太坊/BSC/Robinhood)">链</th><th class="num" title="该链稳定币存量占所列链总量的比例(存量,慢变量)">份额</th><th class="num" title="份额较上一快照的变化,pp=百分点;正=稳定币在往这条链搬(慢钱)">份额Δ</th><th class="num" title="24h DEX 绝对成交额(DeFiLlama)">量24h</th><th class="num" title="近6h成交 vs 全天均速的加速;免费源无12h,用6h替代">6h</th><th class="num" title="24h DEX 量环比(DeFiLlama change_1d)">24h</th><th class="num" title="7d DEX 量变化(DeFiLlama change_7d);免费源无3d,用7d替代">7d</th><th class="num" title="协议收入(DeFiLlama revenue)按占比加权的升温/降温;⚠=单协议占>60%已折价">费用动量</th><th title="多时间轴综合分判定;交易=真热钱放量,费用=仅靠协议费用">方向</th><th title="当前热度形态(非预测);前缀=方向,N/4窗=1h/6h/24h/7d同向数">持续性</th><th title="ok=全源到位 / partial=部分缺 / missing=全缺">数据</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`)}
     ${fieldNote([
-      ["链", "公链:Solana / Base / 以太坊主网 / BSC。"],
-      ["份额", "该链稳定币<strong>存量</strong>占四链总量的比例(慢变量,代表沉淀资金)。"],
+      ["链", "公链:Solana / Base / 以太坊主网 / BSC / Robinhood。"],
+      ["份额", "该链稳定币<strong>存量</strong>占所列链总量的比例(慢变量,代表沉淀资金)。"],
       ["份额Δ", "份额较上一快照的变化(pp=百分点)。正=稳定币在往这条链搬=慢钱跟进。"],
       ["量24h", "该链 24h DEX <strong>绝对成交额</strong>(DeFiLlama)。"],
       ["6h", "近 6h 成交 vs 全天均速的<strong>加速</strong>(±10% 才算显著)。<strong>替 12h</strong>——免费源无 12h。"],
       ["24h", "DEX 量日环比(DeFiLlama change_1d)。"],
-      ["7d", "DEX 量 7 天变化。<strong>替 3d</strong>——免费源无 3d。"],
+      ["7d", "DEX 量 7 天变化。<strong>替 3d</strong>——免费源无 3d；超过 ±1000% 时显示限幅值并标 <strong>新链·基数低</strong>。"],
       ["费用动量", "该链各协议<strong>收入</strong>(DeFiLlama revenue)按占比加权的升温/降温;⚠=单协议占>60%,已折价去噪。"],
       ["方向", "多时间轴综合分(6h/24h/存量,0.45/0.35/0.20)判:净流入/净流出/持平。<span class='up'>交易</span>=真热钱放量,<span class='warn'>费用</span>=交易冷、仅靠协议费用。"],
       ["持续性", "当前热度形态(<strong>非未来预测</strong>):闪现(日内)/持续(1-3d)/结构性(多日)/积累中。前缀 流入/外流=方向,N/4窗=1h/6h/24h/7d 中同向的时间窗数。"],

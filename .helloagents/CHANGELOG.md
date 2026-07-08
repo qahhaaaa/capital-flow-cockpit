@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-07-08(下午2)
+
+- **新增第 5 条链 Robinhood Chain(Codex 实现 + 本会话 review)**: ① `config.mjs` `SUPPORTED_CHAINS` 加 `{id:robinhood, label:Robinhood, llamaName:"Robinhood Chain", ecosystemSymbols:[]}`——DeFiLlama 三源都有(稳定币$254M、DEX 24h≈$32M/+69%),但费用=0、**无 GeckoTerminal**(fast 6h 缺失→综合分降级到 mid+slow 归一化);② **新链脏数据去噪** `capDexChangePct()`(chain-flow):DEX 变化% 超 ±1000% 时截断并保留 raw + 标 `新链·基数低`(robinhood 7d 原始达 2.1亿%,除零假象),前端 L2 表 7d 列显示 `≫+1000% 新链·基数低` + title 带原始值;③ watchlist 对无 GT/CoinGecko 映射的链逐链 catch 优雅降级(不加假映射);④ 健康信号取舍:robinhood 结构性缺 GT/费用 → `geckoterminal-trending` 源 + `chain` 层显 `partial`,**接受为诚实标注**(不豁免)。测试 132→**135**(config/cap/降级三个新测试)。**Review 结论**:实现正确、端到端跑通(5 行渲染/7d 限幅/降级不崩/无控制台报错),review 侧顺手修 1 处漏改文案(fieldNote「四链」→「所列链」)。类型: 新增。文件: `src/config.mjs`, `src/cockpit/layers/chain-flow.mjs`, `public/main.js`, `tests/config.test.mjs`, `tests/cockpit-chain-flow.test.mjs`, `tests/cockpit-provider-watchlist.test.mjs`。
+
 ## 2026-07-08(下午)
 
 - **全站字段消歧:每表加「字段说明」可展开 + 表头 title**: 应"字段含义都标上、禁止歧义"——6 张数据表(L2 链间 / L3 发射台 / L4 DEX↔CEX / L5 板块 / App 收入 / 仓位建议)每张下方加一个 tap 可展开的「字段说明 · 点击展开」`<details>`,逐列列出`表头=精确含义`+ 关键徽章(方向词/持续性四档/flowType/仓位档/数据质量…)+ 口径提示(如 L2 的 12h/3d 免费源无、L4 闸门信号不指导单标、App 活动热度非净流入)。**移动端专门用 tap 展开而非 title 悬停**(手机 hover 不出);桌面端同时给每个 `<th>` 加 title 即时悬停。新增 `fieldNote()` helper + `.field-note/.fn-*` 样式(复用 `.deriv` 的 accent summary、32px 触达)。纯前端。文件: `public/main.js`, `public/index.html`。测试 132 绿,移动端 375px 目验(6 表字段说明齐全、可展开、不溢出)。

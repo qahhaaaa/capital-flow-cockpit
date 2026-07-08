@@ -23,6 +23,12 @@ export const SUPPORTED_CHAINS = [
     llamaName: "BSC",
     ecosystemSymbols: ["BNB-USDT", "CAKE-USDT"],
   },
+  {
+    id: "robinhood",
+    label: "Robinhood",
+    llamaName: "Robinhood Chain",
+    ecosystemSymbols: [],
+  },
 ];
 
 // L3 发射台 (launchpad) registry. llamaName must match the protocol name in

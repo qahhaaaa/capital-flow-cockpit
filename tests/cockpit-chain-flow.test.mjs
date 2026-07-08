@@ -61,7 +61,7 @@ test("normalize: maps llamaName to chain id and computes share of global supply"
   assert.equal(sol.dataQuality, "ok");
   assert.deepEqual(
     perChain.map((c) => c.chain),
-    ["solana", "base", "ethereum", "bsc"],
+    ["solana", "base", "ethereum", "bsc", "robinhood"],
   );
 });
 
@@ -79,6 +79,7 @@ test("chain-flow signal: rising share = inflow, falling = outflow, with a rotati
     { chain: "base", label: "Base", shareSeries: [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5] },
     { chain: "ethereum", label: "ETH 主网", shareSeries: [52, 51.8, 51.5, 51.2, 51, 50.7, 50.4, 50.0] },
     { chain: "bsc", label: "BSC", shareSeries: [4.6, 4.6, 4.6, 4.6, 4.6, 4.6, 4.6, 4.6] },
+    { chain: "robinhood", label: "Robinhood", shareSeries: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] },
   ]);
 
   assert.equal(signal.layer, "chain");
@@ -181,6 +182,33 @@ test("chain-flow composite: missing DEX component is omitted from weights, never
   assert.equal(sol.direction, "outflow");
 });
 
+test("chain-flow flags absurd 7d DEX percentage but leaves normal values unchanged", () => {
+  const signal = computeChainFlowSignal(
+    [
+      { chain: "solana", label: "SOL", shareSeries: [4, 4, 4, 4, 4, 4, 4, 4] },
+      { chain: "base", label: "Base", shareSeries: [1, 1, 1, 1, 1, 1, 1, 1] },
+    ],
+    {
+      dexVolume: {
+        perChain: [
+          { chain: "solana", dexVolChange7dPct: 999.99 },
+          { chain: "base", dexVolChange7dPct: 214_638_293 },
+        ],
+      },
+    },
+  );
+
+  const sol = signal.components.find((component) => component.chain === "solana");
+  const base = signal.components.find((component) => component.chain === "base");
+
+  assert.equal(sol.dexVolChange7dPct, 999.99);
+  assert.equal(sol.dexVolChange7dUntrusted, false);
+  assert.equal(sol.dexVolChange7dRawPct, null);
+  assert.equal(base.dexVolChange7dPct, 1000);
+  assert.equal(base.dexVolChange7dUntrusted, true);
+  assert.equal(base.dexVolChange7dRawPct, 214_638_293);
+  assert.equal(base.dexVolChange7dNote, "新链·基数低");
+});
 test("chain-flow enhancement: old call signature remains byte-compatible", () => {
   const series = [
     { chain: "solana", label: "SOL", shareSeries: [4.0, 4.1, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2] },

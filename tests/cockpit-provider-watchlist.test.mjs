@@ -162,3 +162,18 @@ test("watchlist falls back to CoinGecko for one chain when GeckoTerminal fails a
   assert.equal(out.perChain.base[0].metrics.marketCapUsd, null);
   assert.equal(out.perChain.base[0].metrics.fdvUsd, null);
 });
+test("watchlist isolates chains with no GeckoTerminal or CoinGecko mapping", async () => {
+  const out = await loadDynamicWatchlist({
+    chains: [{ id: "robinhood", label: "Robinhood", llamaName: "Robinhood Chain" }],
+    fetchImpl: async () => {
+      throw new Error("fetch should not be called for unmapped chains");
+    },
+  });
+
+  assert.deepEqual(out.perChain.robinhood, []);
+  assert.deepEqual(out.chainActivity, {});
+  assert.equal(out.errors.length, 1);
+  assert.equal(out.errors[0].chain, "robinhood");
+  assert.match(out.errors[0].message, /unsupported GeckoTerminal chain robinhood/);
+  assert.match(out.errors[0].message, /unsupported CoinGecko category robinhood/);
+});

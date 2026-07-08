@@ -11,6 +11,7 @@ import { cleanWindow, cusum, emaGap, percentileRank, resampleByTime } from "../s
 const FLAT_EPS_PP = 0.02;
 const DEX_MOMENTUM_DEADBAND_PCT = 3;
 const FEE_MOMENTUM_EPS = 0.05;
+const DEX_CHANGE_TRUST_LIMIT_PCT = 1000;
 
 // Delta anchor window. FLAT_EPS_PP was calibrated against one 4h collection step; with the
 // cadence now 1h, a per-adjacent-point delta would shrink ~4x and drown in that deadband.
@@ -30,6 +31,18 @@ function finite(value) {
 
 function peggedUsd(row) {
   return finite(row?.totalCirculatingUSD?.peggedUSD);
+}
+
+export function capDexChangePct(value, { limit = DEX_CHANGE_TRUST_LIMIT_PCT } = {}) {
+  const pct = finite(value);
+  if (pct === null) return { value: null, raw: null, untrusted: false, note: null };
+  if (Math.abs(pct) <= limit) return { value: pct, raw: null, untrusted: false, note: null };
+  return {
+    value: pct > 0 ? limit : -limit,
+    raw: pct,
+    untrusted: true,
+    note: "新链·基数低",
+  };
 }
 
 // Raw stablecoinchains feed -> per-configured-chain stablecoin USD + share of global supply.
@@ -207,11 +220,15 @@ function applyComposite(component, { dexVolumeByChain, feesByChain, activityByCh
     { weight: HORIZON_WEIGHTS.mid, score: mid.score },
     { weight: HORIZON_WEIGHTS.slow, score: slow },
   ]);
+  const dexVolChange7d = capDexChangePct(dexRow?.dexVolChange7dPct);
   const enriched = {
     ...component,
     dexVolChange1dPct: mid.dexVolChange1dPct,
     dexVol24hUsd: finite(dexRow?.dexVol24hUsd), // 24h 绝对成交额(展示用)
-    dexVolChange7dPct: finite(dexRow?.dexVolChange7dPct), // 7d 变化(展示用;广度另在 collect 取)
+    dexVolChange7dPct: dexVolChange7d.value, // 7d 变化(展示用;异常低基数时限幅并保留 raw)
+    dexVolChange7dRawPct: dexVolChange7d.raw,
+    dexVolChange7dUntrusted: dexVolChange7d.untrusted,
+    dexVolChange7dNote: dexVolChange7d.note,
     feesMomentum: mid.feesMomentum,
     feeSpike: mid.feeSpike,
     accel6h: fast.accel6h,
@@ -409,7 +426,7 @@ export function computeChainFlowSignal(perChainSeries, { chains = SUPPORTED_CHAI
     rotationEdges,
     drivers: rotationEdges.length
       ? [`${outflow.label} → ${inflow.label} 资金轮动(${rotationEdges[0].stage === "confirmed" ? "已确认" : rotationEdges[0].stage === "early" ? "早期" : "存量迁移"})`]
-      : ["四链无显著资金轮动"],
+      : ["多链无显著资金轮动"],
     dataQuality,
   };
 }
@@ -431,7 +448,8 @@ export function computeChainPersistence(component, scoreSeries, { dexVolChange7d
   }
 
   // breadth: how many horizons (1h / 6h / 24h / 7d) point the same way as the composite
-  const horizons = [component.accel1h, component.accel6h, component.dexVolChange1dPct, dexVolChange7dPct];
+  const safe7d = capDexChangePct(dexVolChange7dPct).value;
+  const horizons = [component.accel1h, component.accel6h, component.dexVolChange1dPct, safe7d];
   const breadth = horizons.filter((h) => finite(h) !== null && Math.sign(h) === dir).length;
 
   // streak: consecutive most-recent hours the composite score held the current sign
