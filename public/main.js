@@ -311,6 +311,13 @@ const HOW = {
   guidance: "conviction 由各层方向×强度×置信度加权,宏观收水封顶试探;顺风/逆风=支持/反对该标的的层;每条风险降一档",
 };
 
+// 字段说明:每表下方可展开的「表头=精确含义」清单。移动端 title 悬停不出 → 用 tap 可见的 details 消歧义。
+// defs=[[列名,含义],...](含义为静态作者文案,允许简单标记);note=可选醒目口径提示。
+function fieldNote(defs, note = "") {
+  const rows = defs.map(([k, v]) => `<div class="fn-row"><span class="fn-k">${esc(k)}</span><span class="fn-v">${v}</span></div>`).join("");
+  return `<details class="field-note"><summary>字段说明 · 点击展开</summary><div class="fn-body">${rows}</div>${note ? `<div class="fn-note">${note}</div>` : ""}</details>`;
+}
+
 function macroContextDetails() {
   return `<details id="macro-context-details" class="panel macro-context-shell">
     <summary>宏观背景三曲线(手工维护·非实时)· 点击展开</summary>
@@ -572,10 +579,22 @@ function chainPanel(d) {
     <h2>L2 链间资金流动 · 份额+DEX量+费用</h2>
     <div class="how">${esc(HOW.chain)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>链</th><th class="num">份额</th><th class="num">份额Δ</th><th class="num" title="24h DEX 绝对成交额(DeFiLlama)">量24h</th><th class="num" title="近6h成交 vs 全天均速的加速;免费源无12h,用6h替代">6h</th><th class="num" title="24h DEX 量环比(DeFiLlama change_1d)">24h</th><th class="num" title="7d DEX 量变化(DeFiLlama change_7d);免费源无3d,用7d替代">7d</th><th class="num">费用动量</th><th>方向</th><th>持续性</th><th>数据</th></tr></thead>
+      <thead><tr><th title="公链(Solana/Base/以太坊/BSC)">链</th><th class="num" title="该链稳定币存量占四链总量的比例(存量,慢变量)">份额</th><th class="num" title="份额较上一快照的变化,pp=百分点;正=稳定币在往这条链搬(慢钱)">份额Δ</th><th class="num" title="24h DEX 绝对成交额(DeFiLlama)">量24h</th><th class="num" title="近6h成交 vs 全天均速的加速;免费源无12h,用6h替代">6h</th><th class="num" title="24h DEX 量环比(DeFiLlama change_1d)">24h</th><th class="num" title="7d DEX 量变化(DeFiLlama change_7d);免费源无3d,用7d替代">7d</th><th class="num" title="协议收入(DeFiLlama revenue)按占比加权的升温/降温;⚠=单协议占>60%已折价">费用动量</th><th title="多时间轴综合分判定;交易=真热钱放量,费用=仅靠协议费用">方向</th><th title="当前热度形态(非预测);前缀=方向,N/4窗=1h/6h/24h/7d同向数">持续性</th><th title="ok=全源到位 / partial=部分缺 / missing=全缺">数据</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`)}
-    <div class="muted" style="margin-top:6px">量=24h 绝对成交额;6h=近6h vs 全天均速(替 12h)、24h/7d=DEX 量环比——<strong>12h/3d 免费源无</strong>。费用=协议收入(DeFiLlama revenue)动量,⚠=单协议 &gt;60% 已折价。</div>
+    ${fieldNote([
+      ["链", "公链:Solana / Base / 以太坊主网 / BSC。"],
+      ["份额", "该链稳定币<strong>存量</strong>占四链总量的比例(慢变量,代表沉淀资金)。"],
+      ["份额Δ", "份额较上一快照的变化(pp=百分点)。正=稳定币在往这条链搬=慢钱跟进。"],
+      ["量24h", "该链 24h DEX <strong>绝对成交额</strong>(DeFiLlama)。"],
+      ["6h", "近 6h 成交 vs 全天均速的<strong>加速</strong>(±10% 才算显著)。<strong>替 12h</strong>——免费源无 12h。"],
+      ["24h", "DEX 量日环比(DeFiLlama change_1d)。"],
+      ["7d", "DEX 量 7 天变化。<strong>替 3d</strong>——免费源无 3d。"],
+      ["费用动量", "该链各协议<strong>收入</strong>(DeFiLlama revenue)按占比加权的升温/降温;⚠=单协议占>60%,已折价去噪。"],
+      ["方向", "多时间轴综合分(6h/24h/存量,0.45/0.35/0.20)判:净流入/净流出/持平。<span class='up'>交易</span>=真热钱放量,<span class='warn'>费用</span>=交易冷、仅靠协议费用。"],
+      ["持续性", "当前热度形态(<strong>非未来预测</strong>):闪现(日内)/持续(1-3d)/结构性(多日)/积累中。前缀 流入/外流=方向,N/4窗=1h/6h/24h/7d 中同向的时间窗数。"],
+      ["数据", "数据质量:ok=全源到位 / partial=部分源缺 / missing=全缺。"],
+    ], "口径:<strong>12h/3d 任何免费源都没有</strong>(DeFiLlama 日粒度只有 24h/7d/30d;GeckoTerminal 只有 1h/6h/24h)→ 用 6h 替 12h、7d 替 3d,不硬凑。")}
   </div>`;
 }
 
@@ -599,9 +618,17 @@ function launchpadPanel(d) {
     <div class="how">${esc(HOW.launchpad)}</div>
     <div class="muted" style="margin-bottom:8px">${leader}${chainRoll ? ` · 链分布: ${chainRoll}` : ""}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>发射台</th><th class="num">24h 收入</th><th class="num">份额</th><th class="num">动量</th><th>方向</th><th>数据</th></tr></thead>
+      <thead><tr><th title="打新/发币平台 + 所在链">发射台</th><th class="num" title="平台 24h 真实收入(DeFiLlama fees, dailyRevenue)=打新热度真金白银">24h 收入</th><th class="num" title="占五台总收入的比例">份额</th><th class="num" title="最新24h收入 vs 前7d日均;>0=升温">动量</th><th title="升温/降温/持平(动量方向,含体量门槛)">方向</th><th title="ok / partial / missing">数据</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`)}
+    ${fieldNote([
+      ["发射台", "打新/发币平台(pump.fun / BONK.fun / four.meme 等)+ 所在链。"],
+      ["24h 收入", "平台 24h <strong>真实收入</strong>(DeFiLlama fees,dataType=dailyRevenue)——打新热度的真金白银。"],
+      ["份额", "该平台占五台<strong>总收入</strong>的比例。"],
+      ["动量", "最新 24h 收入 vs 前 7d 日均。>0=升温,<0=降温。"],
+      ["方向", "升温 / 降温 / 持平(按动量方向,附体量门槛过滤小台噪声)。"],
+      ["数据", "ok=全源到位 / partial=部分缺 / missing=全缺。"],
+    ])}
   </div>`;
 }
 
@@ -658,9 +685,18 @@ function narrativePanel(d) {
     <h2>L5 主题/板块轮动 · TVL 7d 相对强弱</h2>
     <div class="how">${esc(HOW.narrative)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>板块</th><th class="num">TVL</th><th class="num">7d</th><th class="num">1d</th><th class="num">强度</th><th>方向</th><th>数据</th></tr></thead>
+      <thead><tr><th title="DeFiLlama 板块/叙事分类(如 DEX、借贷、LSD)">板块</th><th class="num" title="板块总锁仓量(含币价噪声)">TVL</th><th class="num" title="板块 7d TVL 相对变化——叙事资金轮动主信号">7d</th><th class="num" title="板块 1d TVL 变化">1d</th><th class="num" title="该板块 7d 变化在所有板块中的分位(0-100,越高越强)">强度</th><th title="走强/走弱/持平(7d 变化 ±2% 死区)">方向</th><th title="ok / partial / missing">数据</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`)}
+    ${fieldNote([
+      ["板块", "DeFiLlama 板块/叙事分类(如 DEX、借贷 Lending、LSD、RWA)。"],
+      ["TVL", "板块总锁仓量。<strong>含币价噪声</strong>(USD 计价,币价涨也会抬 TVL)。"],
+      ["7d", "板块 7d TVL 相对变化——<strong>叙事资金轮动的主信号</strong>。"],
+      ["1d", "板块 1d TVL 变化(短窗参考)。"],
+      ["强度", "该板块 7d 变化在所有板块中的<strong>分位</strong>(0-100,越高越强)。"],
+      ["方向", "走强 / 走弱 / 持平(7d 加权变化 vs ±2% 死区)。"],
+      ["数据", "ok=全源到位 / partial=部分缺 / missing=全缺。"],
+    ], "热门搜索(下方)仅是<strong>注意力代理</strong>,可被操纵,不进引擎。")}
     ${narrativeDerivation(nv)}
     ${msBlock}
   </div>`;
@@ -707,9 +743,18 @@ function appRevenuePanel(d) {
     <div class="how">${esc(HOW.appRevenue)}</div>
     <div class="muted" style="margin-bottom:8px">${esc(h.note ?? "协议收入=活动热度,非流动性/净流入")} · 数据 ${qBadge(h.dataQuality)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>链</th><th>协议</th><th class="num">24h 收入</th><th class="num">份额</th><th class="num">动量</th><th>方向</th><th>数据</th></tr></thead>
+      <thead><tr><th title="公链">链</th><th title="该链收入 top 协议">协议</th><th class="num" title="协议 24h 收入(DeFiLlama revenue)">24h 收入</th><th class="num" title="占该链总收入的比例">份额</th><th class="num" title="24h 收入 vs 前7d日均;>0=升温">动量</th><th title="升温/降温/持平">方向</th><th title="ok / partial / missing">数据</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="7" class="muted">App 收入热度无数据。</td></tr>`}</tbody>
     </table>`)}
+    ${fieldNote([
+      ["链", "公链:Solana / Base / 以太坊 / BSC。"],
+      ["协议", "该链收入 top 协议(pump.fun / GMGN / Aave 等)。"],
+      ["24h 收入", "协议 24h <strong>收入</strong>(DeFiLlama revenue)。"],
+      ["份额", "该协议占<strong>本链</strong>总收入的比例。"],
+      ["动量", "24h 收入 vs 前 7d 日均。>0=升温,<0=降温。"],
+      ["方向", "升温 / 降温 / 持平(动量方向,占比<1% 视为持平)。"],
+      ["数据", "ok=全源到位 / partial=部分缺 / missing=全缺。"],
+    ], "本面板是<strong>活动热度</strong>,不是流动性也不是净流入,不进引擎/conviction;单协议占>60% 会标『谨慎解读为链级热度』。")}
   </div>`;
 }
 
@@ -731,9 +776,14 @@ function dexcexPanel(d) {
     <div class="how">${esc(HOW.dexCex)}</div>
     <div class="muted">合约/现货量比: ${ratio(x?.perpSpotRatio)} · 数据 ${qBadge(x?.dataQuality)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>资产</th><th class="num">资金费率·年化</th><th class="num">合约/现货</th></tr></thead>
+      <thead><tr><th title="币种(BTC/ETH…)">资产</th><th class="num" title="永续合约资金费率年化;>0=多头付费=资金挤合约(过热),<0=空头付费">资金费率·年化</th><th class="num" title="永续 vs 现货成交量比;偏现货=承接型资金更健康">合约/现货</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="3" class="muted">OKX 未采集(可能代理不可达)。</td></tr>`}</tbody>
     </table>`)}
+    ${fieldNote([
+      ["资产", "币种(BTC / ETH 等主流合约标的)。"],
+      ["资金费率·年化", "永续合约 funding 的年化。<span class='warn'>>0</span>=多头付费=资金挤在合约(过热、防挤仓);<span class='up'><0</span>=空头付费。"],
+      ["合约/现货", "永续 vs 现货成交量比。偏现货=承接型资金,更健康;偏合约=杠杆投机为主。"],
+    ], "本层是<strong>闸门/环境信号,不指导单一标的</strong>;来源 OKX,云端 451 时自动切 Hyperliquid(仅永续腿→标 partial)。")}
   </div>`;
 }
 
@@ -876,9 +926,20 @@ function guidancePanel(d) {
     <h2>标的仓位建议(辅助 · 不下单)</h2>
     <div class="how">${esc(HOW.guidance)}</div>
     ${tableScroll(`<table class="guidance-table">
-      <thead><tr><th></th><th>标的</th><th>类型</th><th class="num">conviction</th><th>仓位档</th><th class="hide-mobile">顺风</th><th class="hide-mobile">逆风</th><th>风险</th><th>数据</th></tr></thead>
+      <thead><tr><th title="点 + 展开该标的详情(metrics/因子/顺风逆风/风险全文/CA)"></th><th title="币种(动态 watchlist,GeckoTerminal 各链热门)">标的</th><th title="建议参与场所:链上现货 / CEX 合约">类型</th><th class="num" title="信念分:各层方向×强度×置信度(0.6)+标的因子(0.4)加权,越高越该关注">conviction</th><th title="建议仓位档;watch_only 为硬上限,绝不下单">仓位档</th><th class="hide-mobile" title="支持该标的的层(利多)">顺风</th><th class="hide-mobile" title="反对该标的的层(利空)">逆风</th><th title="风险标记,每条降一档;移动端看数量,详情行看全文">风险</th><th title="ok / partial / missing">数据</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="9" class="muted">未配置标的清单。</td></tr>`}</tbody>
     </table>`)}
+    ${fieldNote([
+      ["+ (首列)", "点开该标的<strong>详情行</strong>:标的级 metrics(价格/多窗涨幅/量/流动性/买卖/CA 复制)+ conviction 因子 + 顺风/逆风全文 + 风险全文。"],
+      ["标的", "币种(动态 watchlist,来自 GeckoTerminal 各链热门 top);带所在链标。"],
+      ["类型", "建议参与场所:链上现货 / CEX 合约。"],
+      ["conviction", "信念分:各层方向×强度×置信度(占 0.6)+ 标的因子(占 0.4:多窗动量/买卖不平衡/换手)加权。<strong>越高越该关注</strong>,不是价格预测。"],
+      ["仓位档", "建议仓位档(如 试探 / 空仓)。<strong>watch_only 为硬上限,系统绝不下单</strong>;宏观收水时封顶到试探。"],
+      ["顺风", "支持该标的的层(利多),如 chain(该链净流入)。<strong>移动端在详情行看全</strong>。"],
+      ["逆风", "反对该标的的层(利空)。移动端在详情行看全。"],
+      ["风险", "风险标记(如 流动性薄、换手异常),<strong>每条降一档</strong>。移动端列内只显数量,详情行看全文。"],
+      ["数据", "ok=全源到位 / partial=部分缺 / missing=全缺。"],
+    ], "全表为<strong>决策辅助,不构成下单指令</strong>;真实交易由你手动执行。")}
   </div>`;
 }
 

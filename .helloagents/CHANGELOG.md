@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-07-08(下午)
+
+- **全站字段消歧:每表加「字段说明」可展开 + 表头 title**: 应"字段含义都标上、禁止歧义"——6 张数据表(L2 链间 / L3 发射台 / L4 DEX↔CEX / L5 板块 / App 收入 / 仓位建议)每张下方加一个 tap 可展开的「字段说明 · 点击展开」`<details>`,逐列列出`表头=精确含义`+ 关键徽章(方向词/持续性四档/flowType/仓位档/数据质量…)+ 口径提示(如 L2 的 12h/3d 免费源无、L4 闸门信号不指导单标、App 活动热度非净流入)。**移动端专门用 tap 展开而非 title 悬停**(手机 hover 不出);桌面端同时给每个 `<th>` 加 title 即时悬停。新增 `fieldNote()` helper + `.field-note/.fn-*` 样式(复用 `.deriv` 的 accent summary、32px 触达)。纯前端。文件: `public/main.js`, `public/index.html`。测试 132 绿,移动端 375px 目验(6 表字段说明齐全、可展开、不溢出)。
+
 ## 2026-07-08
 
 - **L2 链间表加 DEX 量绝对值 + 多窗变化列**: 应需求把链间层的 DEX 量摊开——新增 4 列 `量24h`(24h 绝对成交额,如 SOL $25.19亿)、`6h`(近6h vs 全天均速加速)、`24h`(原「DEX量1d」重命名)、`7d`(DEX 量环比)。① 引擎 `applyComposite` 透传 `dexVol24hUsd`+`dexVolChange7dPct` 到组件(此前只算不展示;广度仍在 collect 单独取 7d,不受影响);② 前端 `chainPanel` 加列,`6h` 用 accelCell(比率×100、死区±10%),绝对量 nowrap 防"亿"换行;③ **数据诚实脚注**:用户要的 12h/3d 在任何免费源都不存在(DeFiLlama 日粒度只有 24h/7d/30d;GeckoTerminal 只有 1h/6h/24h)→ 用 6h 替 12h、7d 替 3d,表格与脚注明确标注"12h/3d 免费源无",不硬凑;④ 顺带把「费用」口径在脚注讲清=协议收入(DeFiLlama revenue)动量。移动端 375px 表格 `.table-scroll` 内滚不溢出。类型: 新增。文件: `src/cockpit/layers/chain-flow.mjs`, `public/main.js`。测试 132 绿,真实数据目验(SOL/Base/ETH/BSC 量+多窗+颜色分级)。
