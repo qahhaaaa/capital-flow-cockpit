@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-07-08
+
+- **L2 链间表加 DEX 量绝对值 + 多窗变化列**: 应需求把链间层的 DEX 量摊开——新增 4 列 `量24h`(24h 绝对成交额,如 SOL $25.19亿)、`6h`(近6h vs 全天均速加速)、`24h`(原「DEX量1d」重命名)、`7d`(DEX 量环比)。① 引擎 `applyComposite` 透传 `dexVol24hUsd`+`dexVolChange7dPct` 到组件(此前只算不展示;广度仍在 collect 单独取 7d,不受影响);② 前端 `chainPanel` 加列,`6h` 用 accelCell(比率×100、死区±10%),绝对量 nowrap 防"亿"换行;③ **数据诚实脚注**:用户要的 12h/3d 在任何免费源都不存在(DeFiLlama 日粒度只有 24h/7d/30d;GeckoTerminal 只有 1h/6h/24h)→ 用 6h 替 12h、7d 替 3d,表格与脚注明确标注"12h/3d 免费源无",不硬凑;④ 顺带把「费用」口径在脚注讲清=协议收入(DeFiLlama revenue)动量。移动端 375px 表格 `.table-scroll` 内滚不溢出。类型: 新增。文件: `src/cockpit/layers/chain-flow.mjs`, `public/main.js`。测试 132 绿,真实数据目验(SOL/Base/ETH/BSC 量+多窗+颜色分级)。
+
 ## 2026-07-07(下午4)
 
 - **持续性标签去歧义 + 广度人类友好**: ① 引擎中性 tier 词 `升温(1-3d)→持续(1-3d)`——"升温"隐含流入,但持续性对**流出**链同样成立(SOL 净流出却标升温=歧义),改中性词由前端加方向前缀;② 前端持续性统一加**方向前缀**(流入/外流,来自 `c.direction`/边目的地)——L2 表 `persistCell(p, direction)`、轮动边徽章(恒流入)、边推导行;③ **广度改 `N/4窗`** 并加 title 悬停全解释("1h/6h/24h/7d 中与当前方向一致的时间窗数,越多越可信"),不再是无说明的裸数字;④ 顺手修推导文案 `入>+0.15→入>+0.10`(阈值早已降到 0.10,文案漏改)。纯前端 + 1 处引擎标签串。文件: `src/cockpit/layers/chain-flow.mjs`, `public/main.js`。测试 132 绿。

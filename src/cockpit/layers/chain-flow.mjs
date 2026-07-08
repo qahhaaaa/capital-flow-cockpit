@@ -197,7 +197,8 @@ function midScore(dexRow, feesEntry) {
 
 function applyComposite(component, { dexVolumeByChain, feesByChain, activityByChain }) {
   const fast = fastScore(activityByChain.get(component.chain));
-  const mid = midScore(dexVolumeByChain.get(component.chain), feesByChain.get(component.chain));
+  const dexRow = dexVolumeByChain.get(component.chain);
+  const mid = midScore(dexRow, feesByChain.get(component.chain));
   const slow = Number.isFinite(component.shareDeltaPp)
     ? scoreFromDirection(component.direction, (component.strength ?? 0) / 100)
     : null;
@@ -209,6 +210,8 @@ function applyComposite(component, { dexVolumeByChain, feesByChain, activityByCh
   const enriched = {
     ...component,
     dexVolChange1dPct: mid.dexVolChange1dPct,
+    dexVol24hUsd: finite(dexRow?.dexVol24hUsd), // 24h 绝对成交额(展示用)
+    dexVolChange7dPct: finite(dexRow?.dexVolChange7dPct), // 7d 变化(展示用;广度另在 collect 取)
     feesMomentum: mid.feesMomentum,
     feeSpike: mid.feeSpike,
     accel6h: fast.accel6h,

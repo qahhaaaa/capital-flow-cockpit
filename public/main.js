@@ -551,25 +551,31 @@ function chainPanel(d) {
     return base + (c.feeSpike ? ` <span class="warn" title="单协议 ${esc(c.feeSpike.protocol ?? "")} 主导费用 ${esc(c.feeSpike.share)}%,已折价">⚠</span>` : "");
   };
   const dirCell = (c) => `<span class="${dirClass(c.direction)}">${esc(DIR_LABEL[c.direction] ?? c.direction)}</span>${c.flowType === "fee" ? ' <span class="warn">费用</span>' : c.flowType === "trading" ? ' <span class="up">交易</span>' : ""}`;
+  // 6h 是比率(0.39=+39%,近6h vs 全天均速);×100 转百分比,死区 ±10% 同 ACCEL_DEADBAND。
+  const accelCell = (r) => (r === null || r === undefined ? "—" : `<span class="${r > 0.1 ? "up" : r < -0.1 ? "down" : "flat"}">${pctSigned(Number(r) * 100)}</span>`);
   const rows = comps.length
     ? comps.map((c) => `<tr>
         <td>${esc(c.label ?? c.chain)}</td>
         <td class="num">${pct(c.shareNow)}</td>
         <td class="num ${dirClass(c.direction)}">${c.shareDeltaPp === null || c.shareDeltaPp === undefined ? "—" : `${c.shareDeltaPp > 0 ? "+" : ""}${Number(c.shareDeltaPp).toFixed(3)}pp`}</td>
+        <td class="num" style="white-space:nowrap">${usd(c.dexVol24hUsd)}</td>
+        <td class="num">${accelCell(c.accel6h)}</td>
         <td class="num">${dexCell(c.dexVolChange1dPct)}</td>
+        <td class="num">${dexCell(c.dexVolChange7dPct)}</td>
         <td class="num">${feeCell(c)}</td>
         <td>${dirCell(c)}</td>
         <td>${persistCell(c.persistence, c.direction)}</td>
         <td>${qBadge(c.dataQuality)}</td>
       </tr>`).join("")
-    : `<tr><td colspan="8" class="muted">链间层无数据(provider 失败或未采集)。</td></tr>`;
+    : `<tr><td colspan="11" class="muted">链间层无数据(provider 失败或未采集)。</td></tr>`;
   return `<div class="panel">
     <h2>L2 链间资金流动 · 份额+DEX量+费用</h2>
     <div class="how">${esc(HOW.chain)}</div>
     ${tableScroll(`<table>
-      <thead><tr><th>链</th><th class="num">份额</th><th class="num">份额Δ</th><th class="num">DEX量1d</th><th class="num">费用动量</th><th>方向</th><th>持续性</th><th>数据</th></tr></thead>
+      <thead><tr><th>链</th><th class="num">份额</th><th class="num">份额Δ</th><th class="num" title="24h DEX 绝对成交额(DeFiLlama)">量24h</th><th class="num" title="近6h成交 vs 全天均速的加速;免费源无12h,用6h替代">6h</th><th class="num" title="24h DEX 量环比(DeFiLlama change_1d)">24h</th><th class="num" title="7d DEX 量变化(DeFiLlama change_7d);免费源无3d,用7d替代">7d</th><th class="num">费用动量</th><th>方向</th><th>持续性</th><th>数据</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`)}
+    <div class="muted" style="margin-top:6px">量=24h 绝对成交额;6h=近6h vs 全天均速(替 12h)、24h/7d=DEX 量环比——<strong>12h/3d 免费源无</strong>。费用=协议收入(DeFiLlama revenue)动量,⚠=单协议 &gt;60% 已折价。</div>
   </div>`;
 }
 
