@@ -18,6 +18,31 @@ export function buildHistoryEntry({ ts, perChain, totalUsd }) {
   return { ts, chainShares, totalUsd: total };
 }
 
+// Per-chain liquidity-heat metrics patch for the CURRENT history entry (same late-patch
+// pattern as chainScores): DEX 24h volume / TVL / top-pools volume / top-pools liquidity.
+// Only finite numbers are stored — a degraded provider leaves the chain absent, never 0.
+// These series start accumulating the day this ships; sparklines honestly start there too.
+export function buildChainMetricsPatch({ dexVolume, chainTvl, chainPools } = {}) {
+  const pick = (rows, key) => {
+    const out = {};
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const value = row?.[key];
+      if (typeof value === "number" && Number.isFinite(value)) out[row.chain] = value;
+    }
+    return out;
+  };
+  const patch = {};
+  const dexVol = pick(dexVolume, "dexVol24hUsd");
+  const tvl = pick(chainTvl, "tvlUsd");
+  const poolsVol = pick(chainPools, "vol24hUsd");
+  const poolsLiq = pick(chainPools, "liqUsd");
+  if (Object.keys(dexVol).length) patch.chainDexVol = dexVol;
+  if (Object.keys(tvl).length) patch.chainTvl = tvl;
+  if (Object.keys(poolsVol).length) patch.chainPoolsVol = poolsVol;
+  if (Object.keys(poolsLiq).length) patch.chainPoolsLiq = poolsLiq;
+  return patch;
+}
+
 export function appendCockpitHistory(history, entry, { max = MAX_POINTS } = {}) {
   const list = Array.isArray(history) ? history.slice() : [];
   list.push(entry);

@@ -3,11 +3,29 @@ import assert from "node:assert/strict";
 
 import {
   appendCockpitHistory,
+  buildChainMetricsPatch,
   buildHistoryEntry,
   buildShareSeries,
   buildShareSeriesWithTs,
   buildTideSeries,
 } from "../src/cockpit/history.mjs";
+
+test("buildChainMetricsPatch keeps only finite values and omits empty maps", () => {
+  const patch = buildChainMetricsPatch({
+    dexVolume: [
+      { chain: "solana", dexVol24hUsd: 2500000000 },
+      { chain: "robinhood", dexVol24hUsd: null }, // degraded -> absent, never 0
+    ],
+    chainTvl: [{ chain: "robinhood", tvlUsd: 90000000 }],
+    chainPools: [{ chain: "bsc", vol24hUsd: 1698000000, liqUsd: 149000000 }],
+  });
+  assert.deepEqual(patch.chainDexVol, { solana: 2500000000 });
+  assert.deepEqual(patch.chainTvl, { robinhood: 90000000 });
+  assert.deepEqual(patch.chainPoolsVol, { bsc: 1698000000 });
+  assert.deepEqual(patch.chainPoolsLiq, { bsc: 149000000 });
+  // all-missing input -> no keys at all (history entry stays lean)
+  assert.deepEqual(buildChainMetricsPatch({}), {});
+});
 
 test("buildHistoryEntry captures per-chain share keyed by chain id", () => {
   const entry = buildHistoryEntry({

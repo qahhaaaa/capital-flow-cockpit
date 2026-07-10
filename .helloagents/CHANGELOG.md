@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-07-10
+
+- **链流动性热度体检:2 个新数据源 + 链热度一览卡(sparkline)**: 以真实案例(BSC 7-06 峰值 0.46→7-09 收 −0.23 降温;HOOD 7-08 升温 0.27~0.69)体检出三个缺口并补齐:
+  ① **新源 `chain-pools`**(GT 每链头部20池,按 24h 量排序):聚合 池量/池液/换手(量÷液)——**GMGN"每链 top100 币日交易量"的免费等价**(GMGN 无公开 API+CF 防护,CI 不可行);换手当场证明价值:SOL 63x(浅水激流,pump.fun 池)vs Base/ETH 1.5-1.7x(深水慢流)vs BSC 11x。**429 教训**:watchlist trending(4 并发)与本源同窗口打 GT 必被限速 → 本源改**严格串行(1.2s 间隔)+ 429 重试 2 次(5s/10s)+ 在采集流程最后执行**(与 trending 拉开最远),测试锁定串行行为(maxInFlight===1)。robinhood 无 GT → missing 诚实。
+  ② **新源 `chain-tvl`**(DeFiLlama v2/chains,1 次调用):全链 TVL 存量水深,含 robinhood($93M)——无 GT 的链热度卡回退显示 TVL。
+  ③ **历史扩展**:条目新增 `chainDexVol/chainTvl/chainPoolsVol/chainPoolsLiq`(与 chainScores 同 late-patch 模式,`buildChainMetricsPatch` 只存有限值)——量/流动性时间序列从今天开始积累。
+  ④ **UI 链热度一览卡**(L2 表上方,每链一卡):**现状**=热度分(综合分×100,正流入/负流出)、**趋势**=vs24h 分数变化箭头 + 近48h sparkline(内联 SVG 零依赖,数据来自前端并行拉取的 cockpit-history.json,分数历史自 07-06 起,不足显"积累中")、**持续性**=复用 persistCell 短标;副行 量/池液(或 TVL)/换手。实测卡片直接画出 BSC 降温曲线(−28↓−30 红线下行)与 HOOD 回落曲线。fieldNote 补「热度卡」「池液/换手」术语。类型: 新增。文件: `src/cockpit/providers/chain-pools.mjs`(新), `src/cockpit/providers/chain-tvl.mjs`(新), `src/cockpit/history.mjs`, `scripts/collect-cockpit.mjs`, `public/main.js`, `public/index.html`, 测试×3。测试 135→**142** 绿。
+
 ## 2026-07-08(下午2)
 
 - **新增第 5 条链 Robinhood Chain(Codex 实现 + 本会话 review)**: ① `config.mjs` `SUPPORTED_CHAINS` 加 `{id:robinhood, label:Robinhood, llamaName:"Robinhood Chain", ecosystemSymbols:[]}`——DeFiLlama 三源都有(稳定币$254M、DEX 24h≈$32M/+69%),但费用=0、**无 GeckoTerminal**(fast 6h 缺失→综合分降级到 mid+slow 归一化);② **新链脏数据去噪** `capDexChangePct()`(chain-flow):DEX 变化% 超 ±1000% 时截断并保留 raw + 标 `新链·基数低`(robinhood 7d 原始达 2.1亿%,除零假象),前端 L2 表 7d 列显示 `≫+1000% 新链·基数低` + title 带原始值;③ watchlist 对无 GT/CoinGecko 映射的链逐链 catch 优雅降级(不加假映射);④ 健康信号取舍:robinhood 结构性缺 GT/费用 → `geckoterminal-trending` 源 + `chain` 层显 `partial`,**接受为诚实标注**(不豁免)。测试 132→**135**(config/cap/降级三个新测试)。**Review 结论**:实现正确、端到端跑通(5 行渲染/7d 限幅/降级不崩/无控制台报错),review 侧顺手修 1 处漏改文案(fieldNote「四链」→「所列链」)。类型: 新增。文件: `src/config.mjs`, `src/cockpit/layers/chain-flow.mjs`, `public/main.js`, `tests/config.test.mjs`, `tests/cockpit-chain-flow.test.mjs`, `tests/cockpit-provider-watchlist.test.mjs`。

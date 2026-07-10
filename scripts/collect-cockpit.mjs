@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { assembleCockpit } from "../src/cockpit/contract.mjs";
-import { appendCockpitHistory, buildChainScoreSeries, buildHistoryEntry, buildShareSeriesWithTs, buildTideSeries } from "../src/cockpit/history.mjs";
+import { appendCockpitHistory, buildChainMetricsPatch, buildChainScoreSeries, buildHistoryEntry, buildShareSeriesWithTs, buildTideSeries } from "../src/cockpit/history.mjs";
 import { computeChainFlowSignal, computeChainPersistence } from "../src/cockpit/layers/chain-flow.mjs";
 import { computeStableTideSignal } from "../src/cockpit/layers/stable-tide.mjs";
 import { computeAppRevenueSignal } from "../src/cockpit/layers/app-revenue.mjs";
@@ -24,6 +24,8 @@ import { loadOkxDerivativesSnapshot } from "../src/cockpit/providers/dexcex.mjs"
 import { loadHyperliquidDerivativesSnapshot } from "../src/cockpit/providers/hyperliquid.mjs";
 import { loadDynamicWatchlist } from "../src/cockpit/providers/watchlist.mjs";
 import { loadChainDexVolumeSnapshot } from "../src/cockpit/providers/chain-volume.mjs";
+import { loadChainTopPoolsSnapshot } from "../src/cockpit/providers/chain-pools.mjs";
+import { loadChainTvlSnapshot } from "../src/cockpit/providers/chain-tvl.mjs";
 
 const outputPath = resolve("public/data/cockpit.json");
 const historyPath = resolve("public/data/cockpit-history.json");
@@ -54,6 +56,8 @@ export async function collectCockpit({
   loadDexCexFallback = loadHyperliquidDerivativesSnapshot,
   loadWatchlist = loadDynamicWatchlist,
   loadChainVolume = loadChainDexVolumeSnapshot,
+  loadChainPools = loadChainTopPoolsSnapshot,
+  loadChainTvl = loadChainTvlSnapshot,
   watchlist = DEFAULT_WATCHLIST,
   now = new Date().toISOString(),
 } = {}) {
@@ -219,6 +223,47 @@ export async function collectCockpit({
       layerSignals.dexCex = computeDexCexSignal({ assets: [] });
       sourceStatus.push({ source: "hyperliquid-derivatives", status: "error", message: fallbackError.message });
     }
+  }
+
+  // 链流动性热度补充源 —— 刻意放在采集流程最后:GT 免费档按突发窗口限速,watchlist 的
+  // trending_pools(4 并发)几秒内再打 4 个 top-pools 会 429;这里与之隔开整段 DeFiLlama/OKX
+  // 加载时间 + provider 内部串行(1.2s 间隔)+ 429 重试,实测 4/4 成功。robinhood 无 GT → missing。
+  let chainPools;
+  try {
+    const tp = await loadChainPools();
+    chainPools = tp.perChain;
+    sourceStatus.push({
+      source: "geckoterminal-top-pools",
+      status: tp.errors.length ? "partial" : "ok",
+      ...(tp.errors.length ? { message: tp.errors.map((e) => `${e.chain}: ${e.message}`).join("; ").slice(0, 200) } : {}),
+    });
+  } catch (error) {
+    sourceStatus.push({ source: "geckoterminal-top-pools", status: "error", message: error.message });
+  }
+  // DeFiLlama 全链 TVL(1 次调用,含 robinhood):存量水深,与 DEX 量的"流"互补。
+  let chainTvl;
+  try {
+    const tv = await loadChainTvl();
+    chainTvl = tv.perChain;
+    sourceStatus.push({ source: "defillama-chain-tvl", status: "ok" });
+  } catch (error) {
+    sourceStatus.push({ source: "defillama-chain-tvl", status: "error", message: error.message });
+  }
+  // 流动性热度字段挂到每链组件(展示用,不进方向判定):TVL 存量水深 + 头部池 量/液/换手。
+  const poolsByChain = new Map((Array.isArray(chainPools) ? chainPools : []).map((row) => [row.chain, row]));
+  const tvlByChain = new Map((Array.isArray(chainTvl) ? chainTvl : []).map((row) => [row.chain, row]));
+  for (const component of chainComponents) {
+    const tp = poolsByChain.get(component.chain);
+    component.topPoolsVol24hUsd = tp?.vol24hUsd ?? null;
+    component.topPoolsLiqUsd = tp?.liqUsd ?? null;
+    component.topPoolsTurnover = tp?.turnover ?? null;
+    component.topPools = tp?.topPools ?? [];
+    component.tvlUsd = tvlByChain.get(component.chain)?.tvlUsd ?? null;
+  }
+  // 热度趋势的根基:把本次每链 DEX量/TVL/头部池量/池液 也写回当前历史点(与 chainScores 同模式),
+  // 量与流动性的时间序列从今天开始积累 —— 数据诚实:sparkline/趋势只画真实积累到的段。
+  if (lastEntry && lastEntry.ts === now) {
+    Object.assign(lastEntry, buildChainMetricsPatch({ dexVolume, chainTvl, chainPools }));
   }
 
   const cockpit = assembleCockpit({
