@@ -118,6 +118,10 @@ function buildRationale(tier, tailwinds, headwinds, riskFlags, regime, notes = [
   return parts.join(" · ");
 }
 
+// 正向单窗截断(追高衰减):日线一根 +80% 的暴拉不再自动近满分——超过 +30% 的部分不计入,
+// 短窗没跟上分数就上不去。负向不截:下跌仍全额扣分(tanh 已软限),风控语义不对称是刻意的。
+const MOMENTUM_UP_CAP_PCT = 30;
+
 function computeMomentumFactor(metrics) {
   const terms = [
     ["px24hPct", 0.5, metricNumber(metrics, "px24hPct")],
@@ -127,14 +131,17 @@ function computeMomentumFactor(metrics) {
   if (!terms.length) return { skipped: "动量字段缺失" };
 
   const weightSum = terms.reduce((sum, [, weight]) => sum + weight, 0);
-  const weighted = terms.reduce((sum, [, weight, value]) => sum + value * (weight / weightSum), 0);
+  const weighted = terms.reduce(
+    (sum, [, weight, value]) => sum + Math.min(value, MOMENTUM_UP_CAP_PCT) * (weight / weightSum),
+    0,
+  );
   const score = clamp(Math.tanh(weighted / 20), -1, 1);
   const raw = terms.map(([key, , value]) => `${key}=${signed(value, 2)}%`).join("、");
   return {
     key: "momentum",
     label: "标的动量",
     score,
-    detail: `标的动量按可用周期重归一计算，${raw}，合成 ${signed(weighted, 2)}%。`,
+    detail: `标的动量按可用周期重归一计算(正向单窗截 +${MOMENTUM_UP_CAP_PCT}% 去追高)，${raw}，合成 ${signed(weighted, 2)}%。`,
   };
 }
 
@@ -157,6 +164,14 @@ function computeFlowFactor(metrics) {
   };
 }
 
+// 换手"甜区"山形曲线,替代旧 log10 只加不减:热度需要换手,但极端换手=赌场池,不该拿满分
+// (旧曲线 ≥10x 一律满分,43x 的最浅赌桌反而登顶)。<0.5x 冷=0;0.5~2x 上坡;2~15x 甜区=1;
+// 15~40x 线性衰减到 0;>40x=0。>25x 另加风险旗降档(见 buildGuidanceRow)。
+const TURNOVER_SWEET_LOW = 2;
+const TURNOVER_SWEET_HIGH = 15;
+const TURNOVER_ZERO_HIGH = 40;
+const TURNOVER_RISK_X = 25;
+
 function computeTurnoverFactor(metrics) {
   const vol24hUsd = metricNumber(metrics, "vol24hUsd");
   const liqUsd = metricNumber(metrics, "liqUsd");
@@ -164,13 +179,17 @@ function computeTurnoverFactor(metrics) {
   if (liqUsd <= 0 || vol24hUsd < 0) return { skipped: "量价流动性字段无效" };
 
   const turnover = vol24hUsd / liqUsd;
-  const score = turnover <= 0 ? 0 : clamp(Math.log10(turnover), 0, 1);
+  let score;
+  if (turnover < 0.5) score = 0;
+  else if (turnover < TURNOVER_SWEET_LOW) score = (turnover - 0.5) / 1.5;
+  else if (turnover <= TURNOVER_SWEET_HIGH) score = 1;
+  else score = clamp(1 - (turnover - TURNOVER_SWEET_HIGH) / (TURNOVER_ZERO_HIGH - TURNOVER_SWEET_HIGH), 0, 1);
   return {
     key: "turnover",
     label: "成交/流动性",
     score,
     turnover,
-    detail: `24h 成交额 ${round(vol24hUsd, 0)} 美元、流动性 ${round(liqUsd, 0)} 美元，换手 ${round(turnover, 2)}x。`,
+    detail: `24h 成交额 ${round(vol24hUsd, 0)} 美元、流动性 ${round(liqUsd, 0)} 美元，换手 ${round(turnover, 2)}x(甜区 ${TURNOVER_SWEET_LOW}~${TURNOVER_SWEET_HIGH}x,过高按赌场池衰减)。`,
   };
 }
 
@@ -327,6 +346,10 @@ function buildGuidanceRow(target, layerSignals, regime, appRevenueHeat) {
   const flowFactor = computeFlowFactor(target.metrics);
   if (flowFactor.key && flowFactor.imb > 0.75 && px24hPct !== null && px24hPct > 50) {
     riskFlags.push("单边追高拥挤");
+  }
+  const turnFactor = computeTurnoverFactor(target.metrics);
+  if (turnFactor.key && turnFactor.turnover > TURNOVER_RISK_X) {
+    riskFlags.push(`极端换手(>${TURNOVER_RISK_X}x,赌场池形态)，反转与滑点风险`);
   }
 
   let tier = tierFromConviction(conviction);

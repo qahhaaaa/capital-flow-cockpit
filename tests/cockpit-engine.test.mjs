@@ -172,6 +172,41 @@ test("guidance v2: negative momentum pulls conviction below null-metrics baselin
   assert.ok(withMetrics.factors.some((factor) => factor.key === "momentum" && factor.pts < 0));
 });
 
+test("guidance v2: turnover sweet-zone curve — casino-grade churn scores 0 and raises a risk flag", () => {
+  // px=0 / 买卖平衡:让 momentum/flow 都在场但得 0 分,turnover 保持名义权重(0.1/0.4 → 满分 10)
+  const mk = (vol, liq) => computePositionGuidance(
+    { chain: chainInflow },
+    [{ target: "T", type: "onchain_spot", chainTag: "solana", metrics: { px1hPct: 0, px6hPct: 0, px24hPct: 0, buys24h: 600, sells24h: 600, vol24hUsd: vol, liqUsd: liq } }],
+    { regime: "neutral" },
+  )[0];
+  const turnoverPts = (row) => row.factors.find((f) => f.key === "turnover").pts;
+
+  const sweet = mk(10_000_000, 1_000_000); // 10x: 甜区满分
+  const decayed = mk(25_000_000, 1_000_000); // 25x: 下坡 1-(10/25)=0.6
+  const casino = mk(44_000_000, 1_000_000); // 44x: 归零 + 风险旗
+  const cold = mk(300_000, 1_000_000); // 0.3x: 冷,0 分
+
+  assert.equal(turnoverPts(sweet), 10);
+  assert.ok(turnoverPts(decayed) > 5.5 && turnoverPts(decayed) < 6.5);
+  assert.equal(turnoverPts(casino), 0);
+  assert.ok(casino.riskFlags.some((flag) => flag.includes("极端换手")));
+  assert.ok(!sweet.riskFlags.some((flag) => flag.includes("极端换手")));
+  assert.equal(turnoverPts(cold), 0);
+});
+
+test("guidance v2: momentum up-cap — a +120% daily spike scores no higher than +30%, downside uncapped", () => {
+  const mk = (px24hPct) => computePositionGuidance(
+    { chain: chainInflow },
+    [{ target: "T", type: "onchain_spot", chainTag: "solana", metrics: { px24hPct } }],
+    { regime: "neutral" },
+  )[0];
+  const momentumPts = (row) => row.factors.find((f) => f.key === "momentum").pts;
+
+  assert.equal(momentumPts(mk(120)), momentumPts(mk(30))); // 超过 +30% 的部分不再加分
+  assert.ok(momentumPts(mk(25)) < momentumPts(mk(30))); // cap 以下仍有区分度
+  assert.ok(momentumPts(mk(-120)) < momentumPts(mk(-30))); // 负向不截,跌全额扣
+});
+
 test("guidance v2: small-sample fund flow is skipped instead of counted as zero", () => {
   const row = computePositionGuidance(
     { chain: chainInflow },
