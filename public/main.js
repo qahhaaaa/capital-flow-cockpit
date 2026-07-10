@@ -189,20 +189,11 @@ function macroAxisLabels(ticks) {
   }
   return out.length ? out : ticks.map((tick) => ({ x: tick.x, label: tick.label }));
 }
-// 滚动历史(cockpit-history.json):热度卡 sparkline/趋势的数据源。拉不到 → null,
-// 卡片降级为"趋势积累中",绝不画假线。
-let HISTORY = null;
 async function main() {
   const app = document.getElementById("app");
   try {
-    const [res, histRes] = await Promise.all([
-      fetch("./data/cockpit.json", { cache: "no-store" }),
-      fetch("./data/cockpit-history.json", { cache: "no-store" }).catch(() => null),
-    ]);
+    const res = await fetch("./data/cockpit.json", { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    try {
-      HISTORY = histRes && histRes.ok ? await histRes.json() : null;
-    } catch { HISTORY = null; }
     app.innerHTML = render(await res.json());
     setupMacroContextLazyHydrate();
     setupGuidanceDetails();
@@ -558,62 +549,52 @@ function persistCell(p, direction) {
   return `<span class="${persistCls(p.label)}" title="${esc(persistTitle(p, prefix))}">${prefix ? prefix + "·" : ""}${esc(p.label)}${p.hours ? "·" + esc(p.hours) + "h" : ""}${persistArrow(p.momentum)}${br}</span>`;
 }
 
-// ── 链热度一览(现状/趋势/持续性,人类友好视图) ─────────────────────────────
-// 每链一卡:热度分(综合分×100,正流入/负流出)+ 趋势箭头(vs 24h 前)+ 近48h sparkline
-// (来自 cockpit-history.json 的 chainScores,历史自 2026-07-06 起)+ 量/池液/换手 + 持续性。
-function chainScorePoints(chainId, hours = 48) {
-  const entries = Array.isArray(HISTORY) ? HISTORY : [];
-  const pts = [];
-  for (const e of entries) {
-    const v = e?.chainScores?.[chainId];
-    const t = Date.parse(e?.ts ?? "");
-    if (typeof v === "number" && Number.isFinite(v) && Number.isFinite(t)) pts.push({ t, v });
-  }
-  pts.sort((a, b) => a.t - b.t);
-  const end = pts.at(-1)?.t;
-  return end ? pts.filter((p) => p.t >= end - hours * 3600e3) : pts;
-}
-// 热度分较 ≥24h 前最近一点的变化(分数差);历史不足 24h → null(显示 —,不硬凑)。
-function scoreTrend24h(pts) {
-  const last = pts.at(-1);
-  if (!last) return null;
-  const ref = [...pts].reverse().find((p) => p.t <= last.t - 24 * 3600e3);
-  return ref ? last.v - ref.v : null;
-}
-function sparkline(pts, cls) {
-  if (pts.length < 2) return `<span class="muted" style="font-size:11px">趋势积累中(${esc(pts.length)}点,历史自07-06起)</span>`;
-  const t0 = pts[0].t;
-  const span = Math.max(1, pts.at(-1).t - t0);
-  const xy = pts.map((p) => {
-    const x = ((p.t - t0) / span) * 100;
-    const y = 14 - Math.max(-1, Math.min(1, p.v)) * 12; // 0 线居中,±1 顶/底
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
-  return `<svg class="spark ${cls}" viewBox="0 0 100 28" preserveAspectRatio="none" role="img" aria-label="近48小时热度走势">
-    <line x1="0" y1="14" x2="100" y2="14" stroke="var(--line)" stroke-width="0.6" stroke-dasharray="2,2"/>
-    <polyline points="${xy}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+// ── 链热度一览(人类友好视图) ────────────────────────────────────────────────
+// 每链一卡:方向词 + 7d量变化 + 近14天"日 DEX 成交量"柱(取自 DeFiLlama 现成日历史,
+// 组件自带 dexVolSeries14d,不依赖本地积累)+ 量/池液/换手 + 持续性。
+// 为什么画量不画热度分:量是最直观的热度(BSC 7-05 冲 $8亿 峰、HOOD 7-08 从 0 跳 $4.3亿,
+// 柱形一眼可见);热度分是抽象合成、日内波动小,画线看不出故事(用户实测反馈)。
+const dayStr = (t) => new Date(t * 1000).toISOString().slice(5, 10).replace("-", "/");
+function volBars(series, cls) {
+  const pts = (Array.isArray(series) ? series : []).filter((p) => Number.isFinite(p?.t) && Number.isFinite(p?.v) && p.v >= 0);
+  if (pts.length < 2) return '<span class="muted" style="font-size:11px">日量历史不足</span>';
+  const max = Math.max(...pts.map((p) => p.v));
+  if (max <= 0) return '<span class="muted" style="font-size:11px">日量全为 0</span>';
+  const n = pts.length;
+  const gap = 1.6;
+  const w = (100 - gap * (n - 1)) / n;
+  const bars = pts.map((p, i) => {
+    const h = Math.max(1.2, (p.v / max) * 26);
+    const x = i * (w + gap);
+    // 前面日子用中性灰,最新一天用当前方向色(currentColor 吃外层 cls)
+    return `<rect x="${x.toFixed(1)}" y="${(28 - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="0.8" fill="${i === n - 1 ? "currentColor" : "var(--flat)"}" fill-opacity="${i === n - 1 ? "1" : "0.55"}"/>`;
+  }).join("");
+  const peak = pts.reduce((a, b) => (b.v > a.v ? b : a));
+  return `<svg class="spark ${cls}" viewBox="0 0 100 28" preserveAspectRatio="none" role="img" aria-label="近${n}天每日成交量">
+    <title>近${n}天每日 DEX 成交量;峰值 ${dayStr(peak.t)} ${usd(peak.v)};最右=最新一天</title>${bars}
   </svg>`;
 }
 function heatCard(c) {
-  const score = typeof c.compositeScore === "number" && Number.isFinite(c.compositeScore)
-    ? Math.round(c.compositeScore * 100) : null;
   const cls = dirClass(c.direction);
-  const pts = chainScorePoints(c.chain);
-  const trend = scoreTrend24h(pts);
-  const trendTxt = trend === null
-    ? '<span class="muted" style="font-size:11px">vs24h —</span>'
-    : `<span class="${trend > 0.05 ? "up" : trend < -0.05 ? "down" : "flat"}" style="font-size:11px" title="热度分较 24h 前的变化">${trend > 0.05 ? "↑" : trend < -0.05 ? "↓" : "→"}${trend > 0 ? "+" : ""}${Math.round(trend * 100)} vs24h</span>`;
+  const dirWord = DIR_LABEL[c.direction] ?? c.direction ?? "—";
+  // 7d 量变化(已在引擎侧限幅;untrusted=新链低基数失真 → 只标注不显示荒谬百分比)
+  const v7 = c.dexVolChange7dPct;
+  const trendTxt = c.dexVolChange7dUntrusted
+    ? '<span class="warn" style="font-size:11px" title="新链基数接近 0,7 天变化百分比失真,看柱形即可">量7d ≫新链</span>'
+    : v7 === null || v7 === undefined
+      ? '<span class="muted" style="font-size:11px">量7d —</span>'
+      : `<span class="${v7 > 10 ? "up" : v7 < -10 ? "down" : "flat"}" style="font-size:11px" title="本周日均成交 vs 上周(DeFiLlama change_7d)">量7d ${pctSigned(v7)}</span>`;
   const liq = c.topPoolsLiqUsd !== null && c.topPoolsLiqUsd !== undefined
     ? `池液 ${usd(c.topPoolsLiqUsd)}`
     : c.tvlUsd !== null && c.tvlUsd !== undefined ? `TVL ${usd(c.tvlUsd)}` : "池液 —";
   const turn = c.topPoolsTurnover !== null && c.topPoolsTurnover !== undefined ? `换手 ${esc(c.topPoolsTurnover)}x` : "换手 —";
   return `<div class="heat-card">
     <div class="heat-head"><strong>${esc(c.label ?? c.chain)}</strong>
-      <span class="heat-score ${cls}" title="热度分=多时间轴综合分×100;正=资金净流入,负=净流出">${score === null ? "—" : (score > 0 ? "+" : "") + score}</span>
+      <span class="heat-score ${cls}" title="方向由多时间轴综合判定(悬停表格「方向」列看细节)">${esc(dirWord)}</span>
       ${trendTxt}
     </div>
-    ${sparkline(pts, cls)}
-    <div class="heat-sub muted" title="量=24h DEX 成交;池液=GT 头部20池流动性(无 GT 的链退回全链 TVL);换手=量÷池液,高=浅水激流">量 ${usd(c.dexVol24hUsd)} · ${liq} · ${turn}</div>
+    ${volBars(c.dexVolSeries14d, cls)}
+    <div class="heat-sub muted" title="量=24h DEX 成交;池液=GT 头部20池流动性(无 GT 的链退回全链 TVL);换手=量÷池液,高=浅水激流">今 ${usd(c.dexVol24hUsd)} · ${liq} · ${turn}</div>
     <div class="heat-sub">${persistCell(c.persistence, c.direction)}</div>
   </div>`;
 }
@@ -664,7 +645,7 @@ function chainPanel(d) {
       <tbody>${rows}</tbody>
     </table>`)}
     ${fieldNote([
-      ["热度卡", "表格上方每链一卡,回答三件事:<strong>现状</strong>=热度分(多时间轴综合分×100,正=净流入/负=净流出)、<strong>趋势</strong>=vs24h(较 24h 前的分数变化)+ 近48h迷你曲线(分数历史自 2026-07-06 起)、<strong>持续性</strong>=卡底短标。"],
+      ["热度卡", "表格上方每链一卡:<strong>方向词</strong>(净流入/净流出/持平,多时间轴综合判定)+ <strong>量7d</strong>(本周日均成交 vs 上周)+ <strong>柱形图=近14天每日 DEX 成交量</strong>(最右柱=最新一天,按方向着色;哪天热哪天冷一眼可见)+ 今量/池液/换手 + 持续性短标。"],
       ["池液/换手", "池液=GT <strong>头部20池</strong>的总流动性(≈GMGN top 币的免费等价;无 GT 的链如 Robinhood 退回全链 TVL);换手=头部池 24h量÷池液,<strong>高换手=浅水激流(投机热钱)</strong>,低换手=深水慢流。"],
       ["链", "公链:Solana / Base / 以太坊主网 / BSC / Robinhood。"],
       ["份额", "该链稳定币<strong>存量</strong>占所列链总量的比例(慢变量,代表沉淀资金)。"],

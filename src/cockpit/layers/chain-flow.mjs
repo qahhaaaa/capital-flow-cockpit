@@ -226,6 +226,7 @@ function applyComposite(component, { dexVolumeByChain, feesByChain, activityByCh
     dexVolChange1dPct: mid.dexVolChange1dPct,
     dexVol24hUsd: finite(dexRow?.dexVol24hUsd), // 24h 绝对成交额(展示用)
     dexVolChange7dPct: dexVolChange7d.value, // 7d 变化(展示用;异常低基数时限幅并保留 raw)
+    dexVolSeries14d: Array.isArray(dexRow?.volSeries) ? dexRow.volSeries : [], // 热度卡 14 天日量柱
     dexVolChange7dRawPct: dexVolChange7d.raw,
     dexVolChange7dUntrusted: dexVolChange7d.untrusted,
     dexVolChange7dNote: dexVolChange7d.note,
