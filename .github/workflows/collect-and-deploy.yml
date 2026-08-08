@@ -40,10 +40,17 @@ on:
       - "public/data/cockpit-history.json"
 
 # 串行化：同一时刻只跑一个，避免数据回写 push 竞争 + Pages 并发部署冲突。
-# cancel-in-progress: false → 不打断正在进行的部署。
+# cancel-in-progress: true → 新 run 顶掉组内旧 run。这是自愈设计，不是优化：
+#   2026-08-06 16:59Z 一次 schedule run 卡死在 github-pages 环境的部署门上（waiting，
+#   pending_deployments 里 reviewers 为空 → 无人可批，永不推进），它一直占着本组；
+#   当时 cancel-in-progress: false，后续 run 只能排队成 pending，而一组只允许一个 pending，
+#   下一小时的 run 一到就把上一个挤掉 → 连续 34h 每个 run 都被 cancel，数据静默停更。
+#   改 true 后同样场景下，下一个小时的 run 会直接顶掉卡死者并正常跑完，无需人工介入。
+# 代价：极端情况下可能打断一次进行中的部署。可接受——数据每小时可再生，
+#   丢一个点远好于静默停更整天。
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: write # 把刷新后的数据文件 commit 回仓库（历史累积）
