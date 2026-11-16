@@ -1,11 +1,11 @@
 {
   "schema": "cockpit/v2",
   "meta": {
-    "generatedAt": "2026-11-16T09:35:13.902Z",
+    "generatedAt": "2026-11-16T20:25:09.787Z",
     "historyPoints": 720
   },
   "regime": "risk_on",
-  "moneyLocation": "偏链上现货(承接型资金)",
+  "moneyLocation": "偏 CEX 合约(投机/杠杆主导)",
   "layers": {
     "macro": {
       "layer": "macro",
@@ -15,7 +15,7 @@
       "components": [
         {
           "metric": "netLiquidityUsdB",
-          "value": 5844.2,
+          "value": 5844.3,
           "changePct": 0.92
         },
         {
@@ -28,7 +28,7 @@
         },
         {
           "metric": "rrpUsdB",
-          "value": 0.3
+          "value": 0.2
         }
       ],
       "rotationEdges": [],
@@ -50,7 +50,7 @@
           "revenue24h": 794297,
           "revenue7d": 6049604,
           "revenueAllTime": 1200997340,
-          "share": 97.4,
+          "share": 97.3,
           "momentum": -0.081,
           "direction": "cooling",
           "strength": 8,
@@ -60,13 +60,13 @@
           "launchpad": "letsbonk",
           "label": "LetsBonk/BONK.fun",
           "chain": "solana",
-          "revenue24h": 18124,
+          "revenue24h": 18521,
           "revenue7d": 301986,
           "revenueAllTime": 46547678,
-          "share": 2.2,
-          "momentum": -0.58,
+          "share": 2.3,
+          "momentum": -0.571,
           "direction": "cooling",
-          "strength": 58,
+          "strength": 57,
           "dataQuality": "ok"
         },
         {
@@ -99,11 +99,11 @@
           "launchpad": "fourmeme",
           "label": "four.meme",
           "chain": "bsc",
-          "revenue24h": 2933,
+          "revenue24h": 3121,
           "revenue7d": 60165,
           "revenueAllTime": 98076892,
           "share": 0.4,
-          "momentum": -0.659,
+          "momentum": -0.637,
           "direction": "flat",
           "strength": null,
           "dataQuality": "ok"
@@ -112,12 +112,12 @@
       "byChain": [
         {
           "chain": "solana",
-          "revenue24h": 812421,
+          "revenue24h": 812818,
           "share": 99.6
         },
         {
           "chain": "bsc",
-          "revenue24h": 2933,
+          "revenue24h": 3121,
           "share": 0.4
         }
       ],
@@ -125,33 +125,33 @@
         "launchpad": "pumpfun",
         "label": "pump.fun",
         "revenue24h": 794297,
-        "share": 97.4
+        "share": 97.3
       },
-      "totalRevenue24h": 815354,
+      "totalRevenue24h": 815939,
       "rotationEdges": [],
       "drivers": [
-        "龙头 pump.fun(97.4% 份额)"
+        "龙头 pump.fun(97.3% 份额)"
       ],
       "dataQuality": "ok"
     },
     "chain": {
       "layer": "chain",
-      "direction": "rotating",
-      "strength": 14,
+      "direction": "stable",
+      "strength": 19,
       "confidence": "high",
       "components": [
         {
           "chain": "solana",
           "label": "SOL",
-          "shareNow": 4.9193,
-          "shareDeltaPp": -0.0089,
-          "direction": "inflow",
-          "strength": 13,
+          "shareNow": 4.8991,
+          "shareDeltaPp": -0.0202,
+          "direction": "outflow",
+          "strength": 19,
           "inflection": null,
           "dataQuality": "ok",
-          "dexVolChange1dPct": -8.79,
-          "dexVol24hUsd": 1543698435.0900002,
-          "dexVolChange7dPct": 47.95,
+          "dexVolChange1dPct": -20.09,
+          "dexVol24hUsd": 1352559060.0900002,
+          "dexVolChange7dPct": 29.63,
           "dexVolSeries14d": [
             {
               "t": 1793664000,
@@ -203,63 +203,63 @@
             },
             {
               "t": 1794700800,
-              "v": 689911610.09
+              "v": 1352559060.0900002
             },
             {
               "t": 1794787200,
-              "v": 615084767.2400001
+              "v": 1331246673.98
             }
           ],
           "dexVolChange7dRawPct": null,
           "dexVolChange7dUntrusted": false,
           "dexVolChange7dNote": null,
-          "feesMomentum": -0.059,
+          "feesMomentum": 0.012,
           "feeSpike": null,
-          "accel6h": 0.1089,
-          "accel1h": -0.3768,
-          "pxMom6h": 27.139,
-          "fastScore": 0.3449,
-          "midScore": -0.0763,
-          "slowScore": 0,
-          "compositeScore": 0.1285,
-          "flowType": "trading",
+          "accel6h": -0.097,
+          "accel1h": -0.3106,
+          "pxMom6h": -4.838,
+          "fastScore": -0.0398,
+          "midScore": -0.1205,
+          "slowScore": -0.657,
+          "compositeScore": -0.1915,
+          "flowType": null,
           "persistence": {
             "label": "持续(1-3d)",
             "hours": 1,
             "momentum": "building",
-            "breadth": 2,
-            "slowFollow": false,
+            "breadth": 3,
+            "slowFollow": true,
             "dataQuality": "ok"
           },
-          "topPoolsVol24hUsd": 321587451,
-          "topPoolsLiqUsd": 30902644,
-          "topPoolsTurnover": 10.41,
+          "topPoolsVol24hUsd": 329820868,
+          "topPoolsLiqUsd": 41161503,
+          "topPoolsTurnover": 8.01,
           "topPools": [
             {
               "name": "SOL / USDC",
-              "vol24hUsd": 67543370,
-              "liqUsd": 16694199
+              "vol24hUsd": 80404703,
+              "liqUsd": 16858836
             },
             {
               "name": "ANT / SOL",
-              "vol24hUsd": 28068652,
+              "vol24hUsd": 43388786,
               "liqUsd": 0
             },
             {
-              "name": "ANT / SOL",
-              "vol24hUsd": 24974457,
-              "liqUsd": 129202
+              "name": "SOL / USDC",
+              "vol24hUsd": 23952279,
+              "liqUsd": 3026398
             }
           ],
-          "tvlUsd": 4691764042
+          "tvlUsd": 4724130293
         },
         {
           "chain": "base",
           "label": "Base",
-          "shareNow": 1.8462,
-          "shareDeltaPp": 0.0128,
-          "direction": "flat",
-          "strength": 2,
+          "shareNow": 1.8167,
+          "shareDeltaPp": -0.0295,
+          "direction": "outflow",
+          "strength": 12,
           "inflection": null,
           "dataQuality": "ok",
           "dexVolChange1dPct": -21.31,
@@ -320,48 +320,48 @@
             },
             {
               "t": 1794787200,
-              "v": 1014958756.7800001
+              "v": 1092719379.82
             }
           ],
           "dexVolChange7dRawPct": null,
           "dexVolChange7dUntrusted": false,
           "dexVolChange7dNote": null,
-          "feesMomentum": 0.869,
+          "feesMomentum": 0.858,
           "feeSpike": null,
-          "accel6h": -0.195,
-          "accel1h": 0.3367,
-          "pxMom6h": -0.471,
-          "fastScore": -0.1157,
-          "midScore": 0.2197,
-          "slowScore": 0,
-          "compositeScore": 0.0248,
+          "accel6h": 0.0997,
+          "accel1h": -0.2623,
+          "pxMom6h": 0.591,
+          "fastScore": 0.0137,
+          "midScore": 0.2153,
+          "slowScore": -0.985,
+          "compositeScore": -0.1155,
           "flowType": null,
           "persistence": {
-            "label": "无显著流向",
-            "hours": 0,
-            "momentum": "flat",
-            "breadth": 0,
-            "slowFollow": false,
-            "dataQuality": "partial"
+            "label": "持续(1-3d)",
+            "hours": 1,
+            "momentum": "building",
+            "breadth": 2,
+            "slowFollow": true,
+            "dataQuality": "ok"
           },
           "topPoolsVol24hUsd": null,
           "topPoolsLiqUsd": null,
           "topPoolsTurnover": null,
           "topPools": [],
-          "tvlUsd": 5157649716
+          "tvlUsd": 5189057926
         },
         {
           "chain": "ethereum",
           "label": "ETH 主网",
-          "shareNow": 46.1941,
-          "shareDeltaPp": -0.0614,
+          "shareNow": 46.169,
+          "shareDeltaPp": -0.0251,
           "direction": "outflow",
-          "strength": 16,
+          "strength": 7,
           "inflection": null,
           "dataQuality": "ok",
-          "dexVolChange1dPct": -29.27,
-          "dexVol24hUsd": 1763216357.1699998,
-          "dexVolChange7dPct": 52.84,
+          "dexVolChange1dPct": -29.26,
+          "dexVol24hUsd": 1763409228.1699998,
+          "dexVolChange7dPct": 52.85,
           "dexVolSeries14d": [
             {
               "t": 1793664000,
@@ -413,29 +413,29 @@
             },
             {
               "t": 1794700800,
-              "v": 1761954213.1699998
+              "v": 1763409228.1699998
             },
             {
               "t": 1794787200,
-              "v": 1311476256.09
+              "v": 1532649128.51
             }
           ],
           "dexVolChange7dRawPct": null,
           "dexVolChange7dUntrusted": false,
           "dexVolChange7dNote": null,
-          "feesMomentum": -0.078,
+          "feesMomentum": -0.099,
           "feeSpike": null,
-          "accel6h": -0.2892,
-          "accel1h": 0.0108,
-          "pxMom6h": 47.491,
-          "fastScore": 0.1255,
-          "midScore": -0.2068,
-          "slowScore": -0.724,
-          "compositeScore": -0.1607,
+          "accel6h": 0.1117,
+          "accel1h": -0.1237,
+          "pxMom6h": 8.956,
+          "fastScore": 0.2216,
+          "midScore": -0.2152,
+          "slowScore": -0.485,
+          "compositeScore": -0.0726,
           "flowType": null,
           "persistence": {
             "label": "持续(1-3d)",
-            "hours": 1,
+            "hours": 2,
             "momentum": "building",
             "breadth": 2,
             "slowFollow": true,
@@ -445,20 +445,20 @@
           "topPoolsLiqUsd": null,
           "topPoolsTurnover": null,
           "topPools": [],
-          "tvlUsd": 37750912436
+          "tvlUsd": 37483898001
         },
         {
           "chain": "bsc",
           "label": "BSC",
-          "shareNow": 4.3891,
-          "shareDeltaPp": 0.0011,
-          "direction": "flat",
-          "strength": 1,
+          "shareNow": 4.3938,
+          "shareDeltaPp": 0.0047,
+          "direction": "outflow",
+          "strength": 7,
           "inflection": null,
           "dataQuality": "ok",
-          "dexVolChange1dPct": -19.33,
-          "dexVol24hUsd": 1090602388.08,
-          "dexVolChange7dPct": 37.08,
+          "dexVolChange1dPct": -19.36,
+          "dexVol24hUsd": 1090303994.08,
+          "dexVolChange7dPct": 37.05,
           "dexVolSeries14d": [
             {
               "t": 1793664000,
@@ -510,63 +510,63 @@
             },
             {
               "t": 1794700800,
-              "v": 1089669136.08
+              "v": 1090303994.08
             },
             {
               "t": 1794787200,
-              "v": 1034281849.74
+              "v": 1082558476.54
             }
           ],
           "dexVolChange7dRawPct": null,
           "dexVolChange7dUntrusted": false,
           "dexVolChange7dNote": null,
-          "feesMomentum": -0.123,
+          "feesMomentum": -0.069,
           "feeSpike": null,
-          "accel6h": 0.1237,
-          "accel1h": -0.0744,
-          "pxMom6h": 6.681,
-          "fastScore": 0.1487,
-          "midScore": -0.1652,
+          "accel6h": -0.1081,
+          "accel1h": -0.1621,
+          "pxMom6h": 2.57,
+          "fastScore": -0.0438,
+          "midScore": -0.1438,
           "slowScore": 0,
-          "compositeScore": 0.0091,
+          "compositeScore": -0.07,
           "flowType": null,
           "persistence": {
-            "label": "无显著流向",
-            "hours": 0,
-            "momentum": "flat",
-            "breadth": 0,
+            "label": "持续(1-3d)",
+            "hours": 1,
+            "momentum": "building",
+            "breadth": 3,
             "slowFollow": false,
-            "dataQuality": "partial"
+            "dataQuality": "ok"
           },
-          "topPoolsVol24hUsd": 2335676008,
-          "topPoolsLiqUsd": 87055307,
-          "topPoolsTurnover": 26.83,
+          "topPoolsVol24hUsd": 1760795478,
+          "topPoolsLiqUsd": 58940402,
+          "topPoolsTurnover": 29.87,
           "topPools": [
             {
-              "name": "EVAA / USDT",
-              "vol24hUsd": 480988743,
-              "liqUsd": 24
-            },
-            {
-              "name": "EVAA / USDT",
-              "vol24hUsd": 408420009,
-              "liqUsd": 2
+              "name": "现货不怕 / USDT",
+              "vol24hUsd": 274610901,
+              "liqUsd": 0
             },
             {
               "name": "WULA / WBNB",
-              "vol24hUsd": 251047011,
-              "liqUsd": 315
+              "vol24hUsd": 247824779,
+              "liqUsd": 310
+            },
+            {
+              "name": "挥手小猫 / USDT",
+              "vol24hUsd": 224998961,
+              "liqUsd": 1435863
             }
           ],
-          "tvlUsd": 4533781088
+          "tvlUsd": 4514236433
         },
         {
           "chain": "robinhood",
           "label": "Robinhood",
-          "shareNow": 0.351,
+          "shareNow": 0.3514,
           "shareDeltaPp": 0.0004,
           "direction": "flat",
-          "strength": 4,
+          "strength": 2,
           "inflection": null,
           "dataQuality": "ok",
           "dexVolChange1dPct": -6.32,
@@ -627,21 +627,21 @@
             },
             {
               "t": 1794787200,
-              "v": 524486078.98
+              "v": 614842495.5500001
             }
           ],
           "dexVolChange7dRawPct": null,
           "dexVolChange7dUntrusted": false,
           "dexVolChange7dNote": null,
-          "feesMomentum": -0.069,
+          "feesMomentum": -0.035,
           "feeSpike": null,
           "accel6h": null,
           "accel1h": null,
           "pxMom6h": null,
           "fastScore": null,
-          "midScore": -0.0655,
+          "midScore": -0.0379,
           "slowScore": 0,
-          "compositeScore": -0.0417,
+          "compositeScore": -0.0241,
           "flowType": null,
           "persistence": {
             "label": "无显著流向",
@@ -655,32 +655,12 @@
           "topPoolsLiqUsd": null,
           "topPoolsTurnover": null,
           "topPools": [],
-          "tvlUsd": 1012487024
+          "tvlUsd": 994023237
         }
       ],
-      "rotationEdges": [
-        {
-          "from": "ethereum",
-          "to": "solana",
-          "type": "chain",
-          "strength": 14,
-          "confidence": "high",
-          "stage": "early",
-          "slowFollow": false,
-          "flowType": "trading",
-          "feeSpike": null,
-          "persistence": {
-            "label": "持续(1-3d)",
-            "hours": 1,
-            "momentum": "building",
-            "breadth": 2,
-            "slowFollow": false,
-            "dataQuality": "ok"
-          }
-        }
-      ],
+      "rotationEdges": [],
       "drivers": [
-        "ETH 主网 → SOL 资金轮动(早期)"
+        "多链无显著资金轮动"
       ],
       "dataQuality": "ok"
     },
@@ -693,240 +673,240 @@
       "components": [
         {
           "sector": "CEX",
-          "tvl": 216679603444,
-          "change7dPct": -8.84,
-          "change1dPct": -0.33,
+          "tvl": 217913357246,
+          "change7dPct": -9.34,
+          "change1dPct": 0.41,
           "direction": "rotate_out",
           "strength": 62.5,
           "protocolCount": 78,
           "topProtocols": [
             {
               "name": "Binance CEX",
-              "tvl": 112813840676,
-              "change7dPct": -8.43,
-              "change1dPct": -0.56
+              "tvl": 113100798395,
+              "change7dPct": -8.84,
+              "change1dPct": 0.09
             },
             {
               "name": "OKX",
-              "tvl": 25580271956,
-              "change7dPct": -6.67,
-              "change1dPct": -0.31
+              "tvl": 27635465284,
+              "change7dPct": 0.06,
+              "change1dPct": 7.29
             },
             {
               "name": "Bybit",
-              "tvl": 13453044584,
-              "change7dPct": -6.11,
-              "change1dPct": 0.84
+              "tvl": 12140707498,
+              "change7dPct": -16.74,
+              "change1dPct": -9.6
             }
           ],
           "dataQuality": "ok"
         },
         {
           "sector": "Bridge",
-          "tvl": 56537025430,
-          "change7dPct": -4.52,
-          "change1dPct": 0.93,
+          "tvl": 56697503300,
+          "change7dPct": -4.96,
+          "change1dPct": 1.24,
           "direction": "rotate_out",
           "strength": 25,
           "protocolCount": 144,
           "topProtocols": [
             {
               "name": "LayerZero V2",
-              "tvl": 17008065112,
-              "change7dPct": 2.9,
-              "change1dPct": 1.8
+              "tvl": 17208517181,
+              "change7dPct": 2.85,
+              "change1dPct": 3.78
             },
             {
               "name": "WBTC",
-              "tvl": 7530372886,
-              "change7dPct": -12.4,
-              "change1dPct": 0.34
+              "tvl": 7550904992,
+              "change7dPct": -13.32,
+              "change1dPct": 0.46
             },
             {
               "name": "Coinbase Bridge",
-              "tvl": 7023671140,
-              "change7dPct": -5.48,
-              "change1dPct": 1.56
+              "tvl": 7026706836,
+              "change7dPct": -6.21,
+              "change1dPct": 0.41
             }
           ],
           "dataQuality": "ok"
         },
         {
           "sector": "Lending",
-          "tvl": 44845925714,
-          "change7dPct": -7.17,
-          "change1dPct": 0.53,
+          "tvl": 45183849424,
+          "change7dPct": -6.89,
+          "change1dPct": 1,
           "direction": "rotate_out",
-          "strength": 50,
+          "strength": 37.5,
           "protocolCount": 484,
           "topProtocols": [
             {
               "name": "Aave V3",
-              "tvl": 13974619178,
-              "change7dPct": -7.42,
-              "change1dPct": 0.59
+              "tvl": 14023863652,
+              "change7dPct": -8.15,
+              "change1dPct": 0.09
             },
             {
               "name": "Morpho Blue",
-              "tvl": 10017294287,
-              "change7dPct": -6.45,
-              "change1dPct": 0.33
+              "tvl": 10041705218,
+              "change7dPct": -7.25,
+              "change1dPct": 0.27
             },
             {
               "name": "SparkLend",
-              "tvl": 4087618614,
-              "change7dPct": -12.51,
-              "change1dPct": 1.21
+              "tvl": 4001946905,
+              "change7dPct": -14.48,
+              "change1dPct": -2.35
             }
           ],
           "dataQuality": "ok"
         },
         {
           "sector": "Liquid Staking",
-          "tvl": 41722643027,
-          "change7dPct": -12.62,
-          "change1dPct": 0.65,
+          "tvl": 41899326328,
+          "change7dPct": -13.47,
+          "change1dPct": 0.05,
           "direction": "rotate_out",
           "strength": 75,
-          "protocolCount": 252,
+          "protocolCount": 251,
           "topProtocols": [
             {
               "name": "Lido",
-              "tvl": 17689137680,
-              "change7dPct": -13.11,
-              "change1dPct": 0.65
+              "tvl": 17753552481,
+              "change7dPct": -14,
+              "change1dPct": 0.06
             },
             {
               "name": "Binance staked ETH",
-              "tvl": 7032036892,
-              "change7dPct": -13.42,
-              "change1dPct": 0.88
+              "tvl": 7058106785,
+              "change7dPct": -14.36,
+              "change1dPct": 0.21
             },
             {
               "name": "ether.fi Stake",
-              "tvl": 3447874086,
-              "change7dPct": -12.94,
-              "change1dPct": 1.48
+              "tvl": 3459661759,
+              "change7dPct": -14.62,
+              "change1dPct": -0.26
             }
           ],
           "dataQuality": "ok"
         },
         {
           "sector": "Staking Pool",
-          "tvl": 11171155441,
-          "change7dPct": -13.88,
-          "change1dPct": 0.56,
+          "tvl": 11246909356,
+          "change7dPct": -13.72,
+          "change1dPct": 0.57,
           "direction": "rotate_out",
           "strength": 87.5,
           "protocolCount": 30,
           "topProtocols": [
             {
               "name": "SSV Network",
-              "tvl": 9600792402,
-              "change7dPct": -13.9,
-              "change1dPct": 0.68
+              "tvl": 9670351320,
+              "change7dPct": -13.77,
+              "change1dPct": 0.64
             },
             {
               "name": "Obol",
-              "tvl": 1092958474,
-              "change7dPct": -10.03,
-              "change1dPct": 0.68
+              "tvl": 1096950747,
+              "change7dPct": -9.46,
+              "change1dPct": 0.08
             },
             {
               "name": "Marinade Native",
-              "tvl": 196115545,
-              "change7dPct": -36.19,
-              "change1dPct": -5.64
+              "tvl": 196228908,
+              "change7dPct": -35.76,
+              "change1dPct": -0.1
             }
           ],
           "dataQuality": "ok"
         },
         {
           "sector": "Dexs",
-          "tvl": 11039384308,
-          "change7dPct": 8135.41,
-          "change1dPct": 0.12,
+          "tvl": 11000777176,
+          "change7dPct": 8123.77,
+          "change1dPct": -0.53,
           "direction": "rotate_in",
           "strength": 100,
           "protocolCount": 1675,
           "topProtocols": [
             {
               "name": "Uniswap V3",
-              "tvl": 1288356076,
-              "change7dPct": -13.03,
-              "change1dPct": 0.11
+              "tvl": 1291108281,
+              "change7dPct": -12.51,
+              "change1dPct": 0.35
             },
             {
               "name": "PancakeSwap AMM",
-              "tvl": 1282316512,
-              "change7dPct": -9.76,
-              "change1dPct": 0.58
+              "tvl": 1284165070,
+              "change7dPct": -10.52,
+              "change1dPct": 0.08
             },
             {
-              "name": "Uniswap V4",
-              "tvl": 1050001624,
-              "change7dPct": -10.07,
-              "change1dPct": -2.29
+              "name": "Curve DEX",
+              "tvl": 1014472159,
+              "change7dPct": -4.53,
+              "change1dPct": 0.29
             }
           ],
           "dataQuality": "ok"
         },
         {
           "sector": "Canonical Bridge",
-          "tvl": 10888831651,
-          "change7dPct": -6.34,
-          "change1dPct": 1.1,
+          "tvl": 10943467650,
+          "change7dPct": -7.53,
+          "change1dPct": 0.56,
           "direction": "rotate_out",
-          "strength": 37.5,
+          "strength": 50,
           "protocolCount": 78,
           "topProtocols": [
             {
               "name": "Arbitrum Bridge",
-              "tvl": 2910476989,
-              "change7dPct": -7.16,
-              "change1dPct": 1.78
+              "tvl": 2920618141,
+              "change7dPct": -8.39,
+              "change1dPct": 0.37
             },
             {
               "name": "Base Bridge",
-              "tvl": 2666066100,
-              "change7dPct": -3.53,
-              "change1dPct": 1.97
+              "tvl": 2699719886,
+              "change7dPct": -4.66,
+              "change1dPct": 1.69
             },
             {
               "name": "Polygon Bridge",
-              "tvl": 2500969990,
-              "change7dPct": -4.58,
-              "change1dPct": -0.14
+              "tvl": 2506133497,
+              "change7dPct": -5.37,
+              "change1dPct": 0.03
             }
           ],
           "dataQuality": "ok"
         },
         {
           "sector": "Risk Curators",
-          "tvl": 9435540170,
-          "change7dPct": -3.29,
-          "change1dPct": 0.25,
+          "tvl": 9419664110,
+          "change7dPct": -4.7,
+          "change1dPct": -0.04,
           "direction": "rotate_out",
           "strength": 12.5,
           "protocolCount": 97,
           "topProtocols": [
             {
               "name": "Steakhouse Financial",
-              "tvl": 2725205240,
-              "change7dPct": -5.39,
-              "change1dPct": 0.47
+              "tvl": 2726492514,
+              "change7dPct": -5.37,
+              "change1dPct": 0.44
             },
             {
               "name": "Sentora Curator",
-              "tvl": 2692069608,
-              "change7dPct": 0.73,
-              "change1dPct": 0.26
+              "tvl": 2686680775,
+              "change7dPct": -1.43,
+              "change1dPct": -0.14
             },
             {
               "name": "Gauntlet",
-              "tvl": 1529423160,
-              "change7dPct": -3.39,
-              "change1dPct": -0.07
+              "tvl": 1535694412,
+              "change7dPct": -6.84,
+              "change1dPct": 0.42
             }
           ],
           "dataQuality": "ok"
@@ -939,8 +919,8 @@
           "type": "sector",
           "strength": 100,
           "confidence": "medium",
-          "fromChange": -13.88,
-          "toChange": 8135.41
+          "fromChange": -13.72,
+          "toChange": 8123.77
         }
       ],
       "drivers": [
@@ -949,84 +929,84 @@
       "mindshare": {
         "trendingCoins": [
           {
-            "symbol": "BTC",
-            "name": "Bitcoin",
-            "marketCapRank": 1,
-            "change24hPct": -2
+            "symbol": "MACCA",
+            "name": "Macca the Gator",
+            "marketCapRank": 830,
+            "change24hPct": 7
           },
           {
-            "symbol": "PEARL",
-            "name": "Pearl",
-            "marketCapRank": 89,
-            "change24hPct": 10
+            "symbol": "GATO",
+            "name": "Gato The Cat",
+            "marketCapRank": 866,
+            "change24hPct": -11
           },
           {
-            "symbol": "HYPE",
-            "name": "Hyperliquid",
-            "marketCapRank": 10,
-            "change24hPct": -1
+            "symbol": "DACITYCOIN",
+            "name": "AudaCity",
+            "marketCapRank": 982,
+            "change24hPct": -17
           },
           {
-            "symbol": "SOL",
-            "name": "Solana",
-            "marketCapRank": 7,
-            "change24hPct": -2
+            "symbol": "LIT",
+            "name": "Lighter",
+            "marketCapRank": 87,
+            "change24hPct": -5
           },
           {
             "symbol": "PENGU",
             "name": "Pudgy Penguins",
             "marketCapRank": 122,
-            "change24hPct": -3
+            "change24hPct": 0
           },
           {
-            "symbol": "ZEC",
-            "name": "Zcash",
-            "marketCapRank": 11,
-            "change24hPct": -3
+            "symbol": "BTC",
+            "name": "Bitcoin",
+            "marketCapRank": 1,
+            "change24hPct": 0
           },
           {
-            "symbol": "XMR",
-            "name": "Monero",
-            "marketCapRank": 12,
-            "change24hPct": -4
+            "symbol": "SOL",
+            "name": "Solana",
+            "marketCapRank": 7,
+            "change24hPct": 0
           },
           {
-            "symbol": "VVV",
-            "name": "Venice Token",
-            "marketCapRank": 69,
+            "symbol": "HYPE",
+            "name": "Hyperliquid",
+            "marketCapRank": 10,
+            "change24hPct": 3
+          },
+          {
+            "symbol": "ETH",
+            "name": "Ethereum",
+            "marketCapRank": 2,
+            "change24hPct": 0
+          },
+          {
+            "symbol": "INJ",
+            "name": "Injective",
+            "marketCapRank": 84,
             "change24hPct": 1
-          },
-          {
-            "symbol": "PI",
-            "name": "Pi Network",
-            "marketCapRank": 82,
-            "change24hPct": -2
-          },
-          {
-            "symbol": "LIT",
-            "name": "Lighter",
-            "marketCapRank": 85,
-            "change24hPct": -9
           }
         ],
         "trendingCategories": [
           {
-            "name": "Options"
+            "name": "Derivatives"
           },
           {
-            "name": "SocialFi"
+            "name": "Perpetuals"
           },
           {
-            "name": "Decentralized Finance (DeFi)"
+            "name": "Decentralized Exchange (DEX)"
           },
           {
-            "name": "Base Native"
-          },
-          {
-            "name": "AI Applications"
+            "name": "Venice Ecosystem"
           },
           {
             "name": "AI Agents"
+          },
+          {
+            "name": "Decentralized Finance (DeFi)"
           }
         ],
         "source": "coingecko-trending",
@@ -1036,77 +1016,58 @@
     },
     "dexCex": {
       "layer": "dexCex",
-      "direction": "to_spot",
-      "strength": 2,
+      "direction": "to_perp",
+      "strength": 3,
       "confidence": "high",
       "crowding": "normal",
-      "perpSpotRatio": 13.29,
+      "perpSpotRatio": 12.91,
       "components": [
         {
           "symbol": "BTC",
-          "funding": -0.000004979405999,
-          "perpSpot": 10.23
+          "funding": 0.0000628538804985,
+          "perpSpot": 9.63
         },
         {
           "symbol": "ETH",
-          "funding": -0.0000541859734111,
-          "perpSpot": 21.16
+          "funding": 0.0000216736178314,
+          "perpSpot": 21.88
         },
         {
           "symbol": "SOL",
-          "funding": 0.0000257435883121,
-          "perpSpot": 10.12
+          "funding": -0.0000630861983409,
+          "perpSpot": 10.69
         },
         {
           "symbol": "BNB",
-          "funding": -0.0000487485444355,
-          "perpSpot": 8.04
+          "funding": 0.0000801417552985,
+          "perpSpot": 8.49
         }
       ],
       "rotationEdges": [],
       "drivers": [
-        "资金偏现货"
+        "资金偏合约"
       ],
       "dataQuality": "ok"
     }
   },
   "flowState": {
     "regime": "risk_on",
-    "moneyLocation": "偏链上现货(承接型资金)",
+    "moneyLocation": "偏 CEX 合约(投机/杠杆主导)",
     "rotationEdges": [
-      {
-        "from": "ethereum",
-        "to": "solana",
-        "type": "chain",
-        "strength": 14,
-        "confidence": "high",
-        "stage": "early",
-        "slowFollow": false,
-        "flowType": "trading",
-        "feeSpike": null,
-        "persistence": {
-          "label": "持续(1-3d)",
-          "hours": 1,
-          "momentum": "building",
-          "breadth": 2,
-          "slowFollow": false,
-          "dataQuality": "ok"
-        }
-      },
       {
         "from": "Staking Pool",
         "to": "Dexs",
         "type": "sector",
         "strength": 100,
         "confidence": "medium",
-        "fromChange": -13.88,
-        "toChange": 8135.41
+        "fromChange": -13.72,
+        "toChange": 8123.77
       }
     ],
     "agreement": {
-      "bullish": 2,
-      "bearish": 1,
-      "net": "aligned_up"
+      "bullish": 1,
+      "bearish": 2,
+      "net": "aligned_down"
     },
     "confidence": "high"
   },
@@ -1114,165 +1075,158 @@
     {
       "target": "MIHAO",
       "type": "onchain_spot",
-      "conviction": 12,
+      "conviction": 2,
       "tier": "flat",
       "tierLabel": "空仓",
       "tailwindLayers": [
         {
-          "layer": "chain",
-          "reason": "SOL 链上资金净流入",
-          "pts": 0.039
-        },
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
+          "layer": "链活动热度",
+          "reason": "SOL 协议收入动量升温",
+          "pts": 0.001
         }
       ],
       "headwindLayers": [
         {
-          "layer": "链活动热度",
-          "reason": "SOL 协议收入动量降温",
-          "pts": 0.004
+          "layer": "chain",
+          "reason": "SOL 链上资金净流出",
+          "pts": 0.057
         },
         {
           "layer": "launchpad",
           "reason": "pump.fun 发射台降温",
           "pts": 0.024
+        },
+        {
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
       "riskFlags": [],
-      "rationale": "仓位档:空仓 · 顺风:chain/dexCex · 逆风:链活动热度/launchpad",
+      "rationale": "仓位档:空仓 · 顺风:链活动热度 · 逆风:chain/launchpad/dexCex",
       "chainTag": "solana",
       "metrics": {
-        "priceUsd": 0.016204230015603782,
-        "px5mPct": 1.182,
-        "px1hPct": 0.788,
-        "px6hPct": -9.552,
-        "px24hPct": -2.596,
-        "vol6hUsd": 465308.387406772,
-        "vol24hUsd": 2953245.76994312,
-        "liqUsd": 435230.9569,
-        "buys24h": 21130,
-        "sells24h": 13350,
-        "fdvUsd": 15258392.8286002,
-        "marketCapUsd": 15258393.4759658,
+        "priceUsd": 0.014836266373885097,
+        "px5mPct": 0.325,
+        "px1hPct": -4.48,
+        "px6hPct": -8.238,
+        "px24hPct": -6.337,
+        "vol6hUsd": 674320.043690064,
+        "vol24hUsd": 2441149.01242666,
+        "liqUsd": 417994.8029,
+        "buys24h": 18497,
+        "sells24h": 11771,
+        "fdvUsd": 13846065.6672953,
+        "marketCapUsd": 13846067.1166907,
         "ca": "4CxjZyMNoF1p6eXHXHv1TWpS2X47CuUmLwtGe18spump",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": 1,
-          "pts": 1,
-          "detail": "层信号 rawT=0.043、rawH=0.028，宏观系数 1.1，按 60% 计入。"
+          "score": -5.7,
+          "pts": -5.7,
+          "detail": "层信号 rawT=0.001、rawH=0.087，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": -0.198,
-          "pts": -4,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-2.6%、px6hPct=-9.55%、px1hPct=+0.79%，合成 -4.01%。"
+          "score": -0.316,
+          "pts": -6.3,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-6.34%、px6hPct=-8.24%、px1hPct=-4.48%，合成 -6.54%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
-          "score": 0.451,
-          "pts": 4.5,
-          "detail": "24h 买卖笔数 21130/13350，失衡度 +0.226。"
+          "score": 0.444,
+          "pts": 4.4,
+          "detail": "24h 买卖笔数 18497/11771，失衡度 +0.222。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
           "score": 1,
           "pts": 10,
-          "detail": "24h 成交额 2953246 美元、流动性 435231 美元，换手 6.79x(甜区 2~15x,过高按赌场池衰减)。"
+          "detail": "24h 成交额 2441149 美元、流动性 417995 美元，换手 5.84x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
     },
     {
-      "target": "WASTED",
+      "target": "VINE",
       "type": "onchain_spot",
       "conviction": 0,
       "tier": "flat",
       "tierLabel": "空仓",
       "tailwindLayers": [
         {
-          "layer": "chain",
-          "reason": "SOL 链上资金净流入",
-          "pts": 0.039
-        },
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
+          "layer": "链活动热度",
+          "reason": "SOL 协议收入动量升温",
+          "pts": 0.001
         }
       ],
       "headwindLayers": [
         {
-          "layer": "链活动热度",
-          "reason": "SOL 协议收入动量降温",
-          "pts": 0.004
+          "layer": "chain",
+          "reason": "SOL 链上资金净流出",
+          "pts": 0.057
         },
         {
-          "layer": "launchpad",
-          "reason": "pump.fun 发射台降温",
-          "pts": 0.024
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
-      "riskFlags": [
-        "流动性薄(<$30万)，出场滑点风险"
-      ],
-      "rationale": "仓位档:空仓 · 顺风:chain/dexCex · 逆风:链活动热度/launchpad · 风险:1 项",
+      "riskFlags": [],
+      "rationale": "仓位档:空仓 · 顺风:链活动热度 · 逆风:chain/dexCex",
       "chainTag": "solana",
       "metrics": {
-        "priceUsd": 0.0034086941854482955,
-        "px5mPct": 1.339,
-        "px1hPct": -8.53,
-        "px6hPct": -19.745,
-        "px24hPct": -29.607,
-        "vol6hUsd": 131226.274948209,
-        "vol24hUsd": 751019.614791074,
-        "liqUsd": 170732.029,
-        "buys24h": 7508,
-        "sells24h": 4810,
-        "fdvUsd": 3344221.94407754,
-        "marketCapUsd": 3344221.94504001,
-        "ca": "GexThZHgaswpAQ7Fi8QrHFubjPimUNSYhJiAA7XZpump",
+        "priceUsd": 0.00861947087287742,
+        "px5mPct": 0.04,
+        "px1hPct": -5.854,
+        "px6hPct": -19.496,
+        "px24hPct": -33.273,
+        "vol6hUsd": 568591.071799286,
+        "vol24hUsd": 4208572.06623898,
+        "liqUsd": 1389794.6312,
+        "buys24h": 14450,
+        "sells24h": 15249,
+        "fdvUsd": 8619081.15275757,
+        "marketCapUsd": 8619081.15275891,
+        "ca": "6AJcP7wuLwmRYLBNbi825wgguaPsWzPBEHcHndpRpump",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": 1,
-          "pts": 1,
-          "detail": "层信号 rawT=0.043、rawH=0.028，宏观系数 1.1，按 60% 计入。"
+          "score": -4.1,
+          "pts": -4.1,
+          "detail": "层信号 rawT=0.001、rawH=0.063，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": -0.808,
-          "pts": -16.2,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-29.61%、px6hPct=-19.74%、px1hPct=-8.53%，合成 -22.43%。"
+          "score": -0.828,
+          "pts": -16.6,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-33.27%、px6hPct=-19.5%、px1hPct=-5.85%，合成 -23.66%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
-          "score": 0.438,
-          "pts": 4.4,
-          "detail": "24h 买卖笔数 7508/4810，失衡度 +0.219。"
+          "score": -0.054,
+          "pts": -0.5,
+          "detail": "24h 买卖笔数 14450/15249，失衡度 -0.027。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
           "score": 1,
           "pts": 10,
-          "detail": "24h 成交额 751020 美元、流动性 170732 美元，换手 4.4x(甜区 2~15x,过高按赌场池衰减)。"
+          "detail": "24h 成交额 4208572 美元、流动性 1389795 美元，换手 3.03x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
@@ -1280,76 +1234,76 @@
     {
       "target": "STONK",
       "type": "onchain_spot",
-      "conviction": 1,
+      "conviction": 0,
       "tier": "flat",
       "tierLabel": "空仓",
       "tailwindLayers": [
         {
-          "layer": "chain",
-          "reason": "SOL 链上资金净流入",
-          "pts": 0.039
-        },
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
+          "layer": "链活动热度",
+          "reason": "SOL 协议收入动量升温",
+          "pts": 0.001
         }
       ],
       "headwindLayers": [
         {
-          "layer": "链活动热度",
-          "reason": "SOL 协议收入动量降温",
-          "pts": 0.004
+          "layer": "chain",
+          "reason": "SOL 链上资金净流出",
+          "pts": 0.057
+        },
+        {
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
       "riskFlags": [],
-      "rationale": "仓位档:空仓 · 顺风:chain/dexCex · 逆风:链活动热度",
+      "rationale": "仓位档:空仓 · 顺风:链活动热度 · 逆风:chain/dexCex",
       "chainTag": "solana",
       "metrics": {
-        "priceUsd": 0.040099586946709044,
-        "px5mPct": 0.009,
-        "px1hPct": -2.439,
-        "px6hPct": -6.839,
-        "px24hPct": -8.019,
-        "vol6hUsd": 355115.135399638,
-        "vol24hUsd": 979367.766437609,
-        "liqUsd": 1833803.6525,
-        "buys24h": 3327,
-        "sells24h": 2063,
-        "fdvUsd": 31045830.1076505,
-        "marketCapUsd": 31046456.6513878,
+        "priceUsd": 0.04076661309106588,
+        "px5mPct": -0.375,
+        "px1hPct": 0.179,
+        "px6hPct": 2.015,
+        "px24hPct": -4.652,
+        "vol6hUsd": 199197.885965132,
+        "vol24hUsd": 1187724.00143474,
+        "liqUsd": 1879872.48,
+        "buys24h": 3531,
+        "sells24h": 2445,
+        "fdvUsd": 31554080.9488924,
+        "marketCapUsd": 31555260.9592023,
         "ca": "6GmAFSYs4gk3FDao5FzzySQpPZaWsa4rUJHacpMpUNgx",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": 2.6,
-          "pts": 2.6,
-          "detail": "层信号 rawT=0.043、rawH=0.004，宏观系数 1.1，按 60% 计入。"
+          "score": -4.1,
+          "pts": -4.1,
+          "detail": "层信号 rawT=0.001、rawH=0.063，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": -0.316,
-          "pts": -6.3,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-8.02%、px6hPct=-6.84%、px1hPct=-2.44%，合成 -6.55%。"
+          "score": -0.084,
+          "pts": -1.7,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-4.65%、px6hPct=+2.02%、px1hPct=+0.18%，合成 -1.69%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
-          "score": 0.469,
-          "pts": 4.7,
-          "detail": "24h 买卖笔数 3327/2063，失衡度 +0.235。"
+          "score": 0.363,
+          "pts": 3.6,
+          "detail": "24h 买卖笔数 3531/2445，失衡度 +0.182。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
-          "score": 0.023,
-          "pts": 0.2,
-          "detail": "24h 成交额 979368 美元、流动性 1833804 美元，换手 0.53x(甜区 2~15x,过高按赌场池衰减)。"
+          "score": 0.088,
+          "pts": 0.9,
+          "detail": "24h 成交额 1187724 美元、流动性 1879872 美元，换手 0.63x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
@@ -1357,70 +1311,153 @@
     {
       "target": "VVV",
       "type": "onchain_spot",
-      "conviction": 12,
+      "conviction": 8,
       "tier": "flat",
       "tierLabel": "空仓",
       "tailwindLayers": [
         {
           "layer": "链活动热度",
           "reason": "Base 协议收入动量升温",
-          "pts": 0.011
+          "pts": 0.012
+        }
+      ],
+      "headwindLayers": [
+        {
+          "layer": "chain",
+          "reason": "Base 链上资金净流出",
+          "pts": 0.036
         },
         {
           "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
-      "headwindLayers": [],
       "riskFlags": [],
-      "rationale": "仓位档:空仓 · 顺风:链活动热度/dexCex",
+      "rationale": "仓位档:空仓 · 顺风:链活动热度 · 逆风:chain/dexCex",
       "chainTag": "base",
       "metrics": {
-        "priceUsd": 20.0753584873842,
-        "px5mPct": -0.059,
-        "px1hPct": -0.436,
-        "px6hPct": 0.747,
-        "px24hPct": 1.097,
-        "vol6hUsd": 129171.692838068,
-        "vol24hUsd": 775335.544650697,
-        "liqUsd": 6475575.0713,
-        "buys24h": 7227,
-        "sells24h": 1033,
-        "fdvUsd": 1631186288.63888,
-        "marketCapUsd": 983475116.252189,
+        "priceUsd": 20.3367011082286,
+        "px5mPct": -0.139,
+        "px1hPct": 1.4,
+        "px6hPct": 0.405,
+        "px24hPct": -0.247,
+        "vol6hUsd": 348045.587643168,
+        "vol24hUsd": 759442.565897661,
+        "liqUsd": 6558625.2369,
+        "buys24h": 7443,
+        "sells24h": 1014,
+        "fdvUsd": 1654428923.16409,
+        "marketCapUsd": 997569881.337647,
         "ca": "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": 1,
-          "pts": 1,
-          "detail": "层信号 rawT=0.015、rawH=0，宏观系数 1.1，按 60% 计入。"
+          "score": -2,
+          "pts": -2,
+          "detail": "层信号 rawT=0.012、rawH=0.042，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": 0.034,
-          "pts": 0.7,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+1.1%、px6hPct=+0.75%、px1hPct=-0.44%，合成 +0.69%。"
+          "score": 0.014,
+          "pts": 0.3,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-0.25%、px6hPct=+0.41%、px1hPct=+1.4%，合成 +0.28%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
           "score": 1,
           "pts": 10,
-          "detail": "24h 买卖笔数 7227/1033，失衡度 +0.75。"
+          "detail": "24h 买卖笔数 7443/1014，失衡度 +0.76。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
           "score": 0,
           "pts": 0,
-          "detail": "24h 成交额 775336 美元、流动性 6475575 美元，换手 0.12x(甜区 2~15x,过高按赌场池衰减)。"
+          "detail": "24h 成交额 759443 美元、流动性 6558625 美元，换手 0.12x(甜区 2~15x,过高按赌场池衰减)。"
+        }
+      ],
+      "dataQuality": "ok"
+    },
+    {
+      "target": "NVDAC",
+      "type": "onchain_spot",
+      "conviction": 4,
+      "tier": "flat",
+      "tierLabel": "空仓",
+      "tailwindLayers": [
+        {
+          "layer": "链活动热度",
+          "reason": "Base 协议收入动量升温",
+          "pts": 0.012
+        }
+      ],
+      "headwindLayers": [
+        {
+          "layer": "chain",
+          "reason": "Base 链上资金净流出",
+          "pts": 0.036
+        },
+        {
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
+        }
+      ],
+      "riskFlags": [],
+      "rationale": "仓位档:空仓 · 顺风:链活动热度 · 逆风:chain/dexCex",
+      "chainTag": "base",
+      "metrics": {
+        "priceUsd": 155.877003481593,
+        "px5mPct": -0.231,
+        "px1hPct": -0.569,
+        "px6hPct": -1.296,
+        "px24hPct": -4.781,
+        "vol6hUsd": 2913488.52327834,
+        "vol24hUsd": 10615782.9545918,
+        "liqUsd": 1436082.7062,
+        "buys24h": 5789,
+        "sells24h": 6200,
+        "fdvUsd": 8179455.26014134,
+        "marketCapUsd": 8179470.06477174,
+        "ca": "0xb20000000000000000000078ee7ce2fe4908108c",
+        "source": "geckoterminal",
+        "at": "2026-11-16T20:25:10.289Z"
+      },
+      "factors": [
+        {
+          "key": "layers",
+          "label": "五层信号",
+          "score": -2,
+          "pts": -2,
+          "detail": "层信号 rawT=0.012、rawH=0.042，宏观系数 1.1，按 60% 计入。"
+        },
+        {
+          "key": "momentum",
+          "label": "标的动量",
+          "score": -0.144,
+          "pts": -2.9,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-4.78%、px6hPct=-1.3%、px1hPct=-0.57%，合成 -2.89%。"
+        },
+        {
+          "key": "flow",
+          "label": "买卖失衡",
+          "score": -0.069,
+          "pts": -0.7,
+          "detail": "24h 买卖笔数 5789/6200，失衡度 -0.034。"
+        },
+        {
+          "key": "turnover",
+          "label": "成交/流动性",
+          "score": 1,
+          "pts": 10,
+          "detail": "24h 成交额 10615783 美元、流动性 1436083 美元，换手 7.39x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
@@ -1435,134 +1472,221 @@
         {
           "layer": "链活动热度",
           "reason": "Base 协议收入动量升温",
-          "pts": 0.011
+          "pts": 0.012
+        }
+      ],
+      "headwindLayers": [
+        {
+          "layer": "chain",
+          "reason": "Base 链上资金净流出",
+          "pts": 0.036
         },
         {
           "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
-      "headwindLayers": [],
       "riskFlags": [],
-      "rationale": "仓位档:空仓 · 顺风:链活动热度/dexCex",
+      "rationale": "仓位档:空仓 · 顺风:链活动热度 · 逆风:chain/dexCex",
       "chainTag": "base",
       "metrics": {
-        "priceUsd": 0.413098025027133,
+        "priceUsd": 0.436476530034489,
         "px5mPct": 0,
-        "px1hPct": -0.169,
-        "px6hPct": -0.654,
-        "px24hPct": -5.933,
-        "vol6hUsd": 308298.271560109,
-        "vol24hUsd": 3024084.81591403,
-        "liqUsd": 22824095.3273,
-        "buys24h": 725,
-        "sells24h": 1437,
-        "fdvUsd": 885276519.521908,
-        "marketCapUsd": 298987979.144013,
+        "px1hPct": 1.689,
+        "px6hPct": 1.992,
+        "px24hPct": 0.753,
+        "vol6hUsd": 645269.603928728,
+        "vol24hUsd": 3615966.56279444,
+        "liqUsd": 23594860.4438,
+        "buys24h": 1368,
+        "sells24h": 1803,
+        "fdvUsd": 935465637.384891,
+        "marketCapUsd": 315877630.017752,
         "ca": "0x3f5bf3edac59d650d8fdf9657a71f2f904a3a4ee",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": 1,
-          "pts": 1,
-          "detail": "层信号 rawT=0.015、rawH=0，宏观系数 1.1，按 60% 计入。"
+          "score": -2,
+          "pts": -2,
+          "detail": "层信号 rawT=0.012、rawH=0.042，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": -0.158,
-          "pts": -3.2,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-5.93%、px6hPct=-0.65%、px1hPct=-0.17%，合成 -3.2%。"
+          "score": 0.066,
+          "pts": 1.3,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+0.75%、px6hPct=+1.99%、px1hPct=+1.69%，合成 +1.31%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
-          "score": -0.659,
-          "pts": -6.6,
-          "detail": "24h 买卖笔数 725/1437，失衡度 -0.329。"
+          "score": -0.274,
+          "pts": -2.7,
+          "detail": "24h 买卖笔数 1368/1803，失衡度 -0.137。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
           "score": 0,
           "pts": 0,
-          "detail": "24h 成交额 3024085 美元、流动性 22824095 美元，换手 0.13x(甜区 2~15x,过高按赌场池衰减)。"
+          "detail": "24h 成交额 3615967 美元、流动性 23594860 美元，换手 0.15x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
     },
     {
-      "target": "NVDAC",
+      "target": "MACCA",
       "type": "onchain_spot",
-      "conviction": 11,
+      "conviction": 15,
       "tier": "flat",
       "tierLabel": "空仓",
-      "tailwindLayers": [
+      "tailwindLayers": [],
+      "headwindLayers": [
+        {
+          "layer": "chain",
+          "reason": "ETH 主网 链上资金净流出",
+          "pts": 0.021
+        },
         {
           "layer": "链活动热度",
-          "reason": "Base 协议收入动量升温",
-          "pts": 0.011
+          "reason": "ETH 主网 协议收入动量降温",
+          "pts": 0.005
         },
         {
           "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
-      "headwindLayers": [],
       "riskFlags": [],
-      "rationale": "仓位档:空仓 · 顺风:链活动热度/dexCex",
-      "chainTag": "base",
+      "rationale": "仓位档:空仓 · 逆风:chain/链活动热度/dexCex",
+      "chainTag": "ethereum",
       "metrics": {
-        "priceUsd": 161.230539595605,
-        "px5mPct": 0.655,
-        "px1hPct": -0.536,
-        "px6hPct": -0.318,
-        "px24hPct": 0.852,
-        "vol6hUsd": 2838581.13975893,
-        "vol24hUsd": 10990158.1489006,
-        "liqUsd": 1304945.2037,
-        "buys24h": 4900,
-        "sells24h": 5048,
-        "fdvUsd": 7941771.39289557,
-        "marketCapUsd": 7941786.70652347,
-        "ca": "0xb20000000000000000000078ee7ce2fe4908108c",
+        "priceUsd": 0.0170142659463802,
+        "px5mPct": -1.549,
+        "px1hPct": -10.672,
+        "px6hPct": -6.815,
+        "px24hPct": 3.999,
+        "vol6hUsd": 356169.389502452,
+        "vol24hUsd": 2052553.47537092,
+        "liqUsd": 347915.6784,
+        "buys24h": 2035,
+        "sells24h": 767,
+        "fdvUsd": 16801050.56,
+        "marketCapUsd": 16801050.56,
+        "ca": "0x37f5dad784304ac1911b95046134c1b74e4d72a9",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": 1,
-          "pts": 1,
-          "detail": "层信号 rawT=0.015、rawH=0，宏观系数 1.1，按 60% 计入。"
+          "score": -2.1,
+          "pts": -2.1,
+          "detail": "层信号 rawT=0、rawH=0.032，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": 0.011,
-          "pts": 0.2,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+0.85%、px6hPct=-0.32%、px1hPct=-0.54%，合成 +0.22%。"
+          "score": -0.109,
+          "pts": -2.2,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+4%、px6hPct=-6.81%、px1hPct=-10.67%，合成 -2.18%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
-          "score": -0.03,
-          "pts": -0.3,
-          "detail": "24h 买卖笔数 4900/5048，失衡度 -0.015。"
+          "score": 0.905,
+          "pts": 9.1,
+          "detail": "24h 买卖笔数 2035/767，失衡度 +0.453。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
           "score": 1,
           "pts": 10,
-          "detail": "24h 成交额 10990158 美元、流动性 1304945 美元，换手 8.42x(甜区 2~15x,过高按赌场池衰减)。"
+          "detail": "24h 成交额 2052553 美元、流动性 347916 美元，换手 5.9x(甜区 2~15x,过高按赌场池衰减)。"
+        }
+      ],
+      "dataQuality": "ok"
+    },
+    {
+      "target": "WASTED",
+      "type": "onchain_spot",
+      "conviction": 35,
+      "tier": "probe",
+      "tierLabel": "试探",
+      "tailwindLayers": [],
+      "headwindLayers": [
+        {
+          "layer": "chain",
+          "reason": "ETH 主网 链上资金净流出",
+          "pts": 0.021
+        },
+        {
+          "layer": "链活动热度",
+          "reason": "ETH 主网 协议收入动量降温",
+          "pts": 0.005
+        },
+        {
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
+        }
+      ],
+      "riskFlags": [],
+      "rationale": "仓位档:试探 · 逆风:chain/链活动热度/dexCex",
+      "chainTag": "ethereum",
+      "metrics": {
+        "priceUsd": 0.0230171755179052,
+        "px5mPct": 2.711,
+        "px1hPct": 18.832,
+        "px6hPct": 40.725,
+        "px24hPct": 1191.732,
+        "vol6hUsd": 1603599.09939244,
+        "vol24hUsd": 6139640.22825226,
+        "liqUsd": 403010.4887,
+        "buys24h": 3667,
+        "sells24h": 1073,
+        "fdvUsd": 22533096.69,
+        "marketCapUsd": null,
+        "ca": "0x0f08046cf0f51616be643f8434232c51c2189edc",
+        "source": "geckoterminal",
+        "at": "2026-11-16T20:25:10.289Z"
+      },
+      "factors": [
+        {
+          "key": "layers",
+          "label": "五层信号",
+          "score": -2.1,
+          "pts": -2.1,
+          "detail": "层信号 rawT=0、rawH=0.032，宏观系数 1.1，按 60% 计入。"
+        },
+        {
+          "key": "momentum",
+          "label": "标的动量",
+          "score": 0.883,
+          "pts": 17.7,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+1191.73%、px6hPct=+40.73%、px1hPct=+18.83%，合成 +27.77%。"
+        },
+        {
+          "key": "flow",
+          "label": "买卖失衡",
+          "score": 1,
+          "pts": 10,
+          "detail": "24h 买卖笔数 3667/1073，失衡度 +0.547。"
+        },
+        {
+          "key": "turnover",
+          "label": "成交/流动性",
+          "score": 0.991,
+          "pts": 9.9,
+          "detail": "24h 成交额 6139640 美元、流动性 403010 美元，换手 15.23x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
@@ -1573,229 +1697,72 @@
       "conviction": 0,
       "tier": "flat",
       "tierLabel": "空仓",
-      "tailwindLayers": [
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
-        }
-      ],
+      "tailwindLayers": [],
       "headwindLayers": [
         {
           "layer": "chain",
           "reason": "ETH 主网 链上资金净流出",
-          "pts": 0.048
+          "pts": 0.021
         },
         {
           "layer": "链活动热度",
           "reason": "ETH 主网 协议收入动量降温",
-          "pts": 0.004
+          "pts": 0.005
+        },
+        {
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
       "riskFlags": [],
-      "rationale": "仓位档:空仓 · 顺风:dexCex · 逆风:chain/链活动热度",
+      "rationale": "仓位档:空仓 · 逆风:chain/链活动热度/dexCex",
       "chainTag": "ethereum",
       "metrics": {
-        "priceUsd": 0.00000375315082617001,
-        "px5mPct": -0.035,
-        "px1hPct": 0.235,
-        "px6hPct": -1.329,
-        "px24hPct": -6.068,
-        "vol6hUsd": 347498.188990771,
-        "vol24hUsd": 1485844.32766687,
-        "liqUsd": 24671892.7147,
-        "buys24h": 334,
-        "sells24h": 447,
-        "fdvUsd": 1552950037.53738,
-        "marketCapUsd": 1578913020.98994,
+        "priceUsd": 0.00000390949743227398,
+        "px5mPct": 0,
+        "px1hPct": 0.22,
+        "px6hPct": 2.378,
+        "px24hPct": 1.262,
+        "vol6hUsd": 411650.957811716,
+        "vol24hUsd": 1388216.37061331,
+        "liqUsd": 25330185.5718,
+        "buys24h": 378,
+        "sells24h": 373,
+        "fdvUsd": 1617641940.13147,
+        "marketCapUsd": 1644686474.66808,
         "ca": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": -3.2,
-          "pts": -3.2,
-          "detail": "层信号 rawT=0.004、rawH=0.052，宏观系数 1.1，按 60% 计入。"
+          "score": -2.1,
+          "pts": -2.1,
+          "detail": "层信号 rawT=0、rawH=0.032，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": -0.168,
-          "pts": -3.4,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-6.07%、px6hPct=-1.33%、px1hPct=+0.24%，合成 -3.39%。"
+          "score": 0.069,
+          "pts": 1.4,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+1.26%、px6hPct=+2.38%、px1hPct=+0.22%，合成 +1.39%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
-          "score": -0.289,
-          "pts": -2.9,
-          "detail": "24h 买卖笔数 334/447，失衡度 -0.145。"
+          "score": 0.013,
+          "pts": 0.1,
+          "detail": "24h 买卖笔数 378/373，失衡度 +0.007。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
           "score": 0,
           "pts": 0,
-          "detail": "24h 成交额 1485844 美元、流动性 24671893 美元，换手 0.06x(甜区 2~15x,过高按赌场池衰减)。"
-        }
-      ],
-      "dataQuality": "ok"
-    },
-    {
-      "target": "WASTED",
-      "type": "onchain_spot",
-      "conviction": 34,
-      "tier": "flat",
-      "tierLabel": "空仓",
-      "tailwindLayers": [
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
-        }
-      ],
-      "headwindLayers": [
-        {
-          "layer": "chain",
-          "reason": "ETH 主网 链上资金净流出",
-          "pts": 0.048
-        },
-        {
-          "layer": "链活动热度",
-          "reason": "ETH 主网 协议收入动量降温",
-          "pts": 0.004
-        }
-      ],
-      "riskFlags": [
-        "流动性薄(<$30万)，出场滑点风险"
-      ],
-      "rationale": "仓位档:空仓 · 顺风:dexCex · 逆风:chain/链活动热度 · 风险:1 项",
-      "chainTag": "ethereum",
-      "metrics": {
-        "priceUsd": 0.00919547220134267,
-        "px5mPct": 6.636,
-        "px1hPct": 25.433,
-        "px6hPct": 174.93,
-        "px24hPct": 459993.512,
-        "vol6hUsd": 1147608.66904728,
-        "vol24hUsd": 4423403.20788046,
-        "liqUsd": 261548.6539,
-        "buys24h": 3116,
-        "sells24h": 919,
-        "fdvUsd": 9547876.584,
-        "marketCapUsd": null,
-        "ca": "0x0f08046cf0f51616be643f8434232c51c2189edc",
-        "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
-      },
-      "factors": [
-        {
-          "key": "layers",
-          "label": "五层信号",
-          "score": -3.2,
-          "pts": -3.2,
-          "detail": "层信号 rawT=0.004、rawH=0.052，宏观系数 1.1，按 60% 计入。"
-        },
-        {
-          "key": "momentum",
-          "label": "标的动量",
-          "score": 0.897,
-          "pts": 17.9,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+459993.51%、px6hPct=+174.93%、px1hPct=+25.43%，合成 +29.09%。"
-        },
-        {
-          "key": "flow",
-          "label": "买卖失衡",
-          "score": 1,
-          "pts": 10,
-          "detail": "24h 买卖笔数 3116/919，失衡度 +0.544。"
-        },
-        {
-          "key": "turnover",
-          "label": "成交/流动性",
-          "score": 0.924,
-          "pts": 9.2,
-          "detail": "24h 成交额 4423403 美元、流动性 261549 美元，换手 16.91x(甜区 2~15x,过高按赌场池衰减)。"
-        }
-      ],
-      "dataQuality": "ok"
-    },
-    {
-      "target": "GATO",
-      "type": "onchain_spot",
-      "conviction": 28,
-      "tier": "probe",
-      "tierLabel": "试探",
-      "tailwindLayers": [
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
-        }
-      ],
-      "headwindLayers": [
-        {
-          "layer": "chain",
-          "reason": "ETH 主网 链上资金净流出",
-          "pts": 0.048
-        },
-        {
-          "layer": "链活动热度",
-          "reason": "ETH 主网 协议收入动量降温",
-          "pts": 0.004
-        }
-      ],
-      "riskFlags": [],
-      "rationale": "仓位档:试探 · 顺风:dexCex · 逆风:chain/链活动热度",
-      "chainTag": "ethereum",
-      "metrics": {
-        "priceUsd": 0.0146570527349871,
-        "px5mPct": 0,
-        "px1hPct": 3.488,
-        "px6hPct": 5.255,
-        "px24hPct": 37.697,
-        "vol6hUsd": 287085.494115576,
-        "vol24hUsd": 2682002.31743753,
-        "liqUsd": 323942.0912,
-        "buys24h": 1457,
-        "sells24h": 685,
-        "fdvUsd": 14754989.48,
-        "marketCapUsd": 14754989.48,
-        "ca": "0xab54a27a4b41957beb30d5eabd2cfad559081a87",
-        "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
-      },
-      "factors": [
-        {
-          "key": "layers",
-          "label": "五层信号",
-          "score": -3.2,
-          "pts": -3.2,
-          "detail": "层信号 rawT=0.004、rawH=0.052，宏观系数 1.1，按 60% 计入。"
-        },
-        {
-          "key": "momentum",
-          "label": "标的动量",
-          "score": 0.698,
-          "pts": 14,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+37.7%、px6hPct=+5.26%、px1hPct=+3.49%，合成 +17.27%。"
-        },
-        {
-          "key": "flow",
-          "label": "买卖失衡",
-          "score": 0.721,
-          "pts": 7.2,
-          "detail": "24h 买卖笔数 1457/685，失衡度 +0.36。"
-        },
-        {
-          "key": "turnover",
-          "label": "成交/流动性",
-          "score": 1,
-          "pts": 10,
-          "detail": "24h 成交额 2682002 美元、流动性 323942 美元，换手 8.28x(甜区 2~15x,过高按赌场池衰减)。"
+          "detail": "24h 成交额 1388216 美元、流动性 25330186 美元，换手 0.05x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
@@ -1803,146 +1770,75 @@
     {
       "target": "$BANANA",
       "type": "onchain_spot",
-      "conviction": 9,
+      "conviction": 13,
       "tier": "flat",
       "tierLabel": "空仓",
-      "tailwindLayers": [
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
-        }
-      ],
+      "tailwindLayers": [],
       "headwindLayers": [
+        {
+          "layer": "chain",
+          "reason": "BSC 链上资金净流出",
+          "pts": 0.021
+        },
         {
           "layer": "链活动热度",
           "reason": "BSC 协议收入动量降温",
-          "pts": 0.007
+          "pts": 0.006
+        },
+        {
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
       "riskFlags": [],
-      "rationale": "仓位档:空仓 · 顺风:dexCex · 逆风:链活动热度",
+      "rationale": "仓位档:空仓 · 逆风:chain/链活动热度/dexCex",
       "chainTag": "bsc",
       "metrics": {
-        "priceUsd": 0.00468238687438958,
-        "px5mPct": -0.273,
-        "px1hPct": 0.135,
-        "px6hPct": -3.66,
-        "px24hPct": 4.32,
-        "vol6hUsd": 1091416.26530937,
-        "vol24hUsd": 5539750.92139907,
-        "liqUsd": 2895230.372,
-        "buys24h": 12754,
-        "sells24h": 14603,
-        "fdvUsd": 46493630.4013393,
-        "marketCapUsd": 46753817.01,
+        "priceUsd": 0.00517754805722559,
+        "px5mPct": -0.978,
+        "px1hPct": -0.154,
+        "px6hPct": 8.862,
+        "px24hPct": 8.841,
+        "vol6hUsd": 3040710.80468227,
+        "vol24hUsd": 6756557.6102966,
+        "liqUsd": 3080725.699,
+        "buys24h": 11646,
+        "sells24h": 13294,
+        "fdvUsd": 51472296.9993099,
+        "marketCapUsd": 51760345.11,
         "ca": "0x3d4f0513e8a29669b960f9dbca61861548a9a760",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": -0.2,
-          "pts": -0.2,
-          "detail": "层信号 rawT=0.004、rawH=0.007，宏观系数 1.1，按 60% 计入。"
+          "score": -2.2,
+          "pts": -2.2,
+          "detail": "层信号 rawT=0、rawH=0.033，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": 0.054,
-          "pts": 1.1,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+4.32%、px6hPct=-3.66%、px1hPct=+0.14%，合成 +1.09%。"
+          "score": 0.339,
+          "pts": 6.8,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+8.84%、px6hPct=+8.86%、px1hPct=-0.15%，合成 +7.05%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
-          "score": -0.135,
-          "pts": -1.4,
-          "detail": "24h 买卖笔数 12754/14603，失衡度 -0.068。"
+          "score": -0.132,
+          "pts": -1.3,
+          "detail": "24h 买卖笔数 11646/13294，失衡度 -0.066。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
-          "score": 0.942,
-          "pts": 9.4,
-          "detail": "24h 成交额 5539751 美元、流动性 2895230 美元，换手 1.91x(甜区 2~15x,过高按赌场池衰减)。"
-        }
-      ],
-      "dataQuality": "ok"
-    },
-    {
-      "target": "EVAA",
-      "type": "onchain_spot",
-      "conviction": 20,
-      "tier": "flat",
-      "tierLabel": "空仓",
-      "tailwindLayers": [
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
-        }
-      ],
-      "headwindLayers": [
-        {
-          "layer": "链活动热度",
-          "reason": "BSC 协议收入动量降温",
-          "pts": 0.007
-        }
-      ],
-      "riskFlags": [
-        "流动性薄(<$30万)，出场滑点风险",
-        "极端换手(>25x,赌场池形态)，反转与滑点风险"
-      ],
-      "rationale": "仓位档:空仓 · 顺风:dexCex · 逆风:链活动热度 · 风险:2 项",
-      "chainTag": "bsc",
-      "metrics": {
-        "priceUsd": 3.23667594381494,
-        "px5mPct": -1.219,
-        "px1hPct": 5.886,
-        "px6hPct": 21.729,
-        "px24hPct": 59.519,
-        "vol6hUsd": 1651272.11182904,
-        "vol24hUsd": 6602424.85519837,
-        "liqUsd": 260770.7906,
-        "buys24h": 41960,
-        "sells24h": 50254,
-        "fdvUsd": 96992869.1483528,
-        "marketCapUsd": 21396536.4168567,
-        "ca": "0xaa036928c9c0df07d525b55ea8ee690bb5a628c1",
-        "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
-      },
-      "factors": [
-        {
-          "key": "layers",
-          "label": "五层信号",
-          "score": -0.2,
-          "pts": -0.2,
-          "detail": "层信号 rawT=0.004、rawH=0.007，宏观系数 1.1，按 60% 计入。"
-        },
-        {
-          "key": "momentum",
-          "label": "标的动量",
-          "score": 0.813,
-          "pts": 16.3,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+59.52%、px6hPct=+21.73%、px1hPct=+5.89%，合成 +22.7%。"
-        },
-        {
-          "key": "flow",
-          "label": "买卖失衡",
-          "score": -0.18,
-          "pts": -1.8,
-          "detail": "24h 买卖笔数 41960/50254，失衡度 -0.09。"
-        },
-        {
-          "key": "turnover",
-          "label": "成交/流动性",
-          "score": 0.587,
-          "pts": 5.9,
-          "detail": "24h 成交额 6602425 美元、流动性 260771 美元，换手 25.32x(甜区 2~15x,过高按赌场池衰减)。"
+          "score": 1,
+          "pts": 10,
+          "detail": "24h 成交额 6756558 美元、流动性 3080726 美元，换手 2.19x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
@@ -1953,70 +1849,153 @@
       "conviction": 0,
       "tier": "flat",
       "tierLabel": "空仓",
-      "tailwindLayers": [
-        {
-          "layer": "dexCex",
-          "reason": "资金回流链上现货",
-          "pts": 0.004
-        }
-      ],
+      "tailwindLayers": [],
       "headwindLayers": [
+        {
+          "layer": "chain",
+          "reason": "BSC 链上资金净流出",
+          "pts": 0.021
+        },
         {
           "layer": "链活动热度",
           "reason": "BSC 协议收入动量降温",
-          "pts": 0.007
+          "pts": 0.006
+        },
+        {
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
         }
       ],
       "riskFlags": [
         "极端换手(>25x,赌场池形态)，反转与滑点风险"
       ],
-      "rationale": "仓位档:空仓 · 顺风:dexCex · 逆风:链活动热度 · 风险:1 项",
+      "rationale": "仓位档:空仓 · 逆风:chain/链活动热度/dexCex · 风险:1 项",
       "chainTag": "bsc",
       "metrics": {
-        "priceUsd": 0.0108147298419025,
-        "px5mPct": -0.322,
-        "px1hPct": -3.087,
-        "px6hPct": 14.425,
-        "px24hPct": -9.532,
-        "vol6hUsd": 19154896.2969461,
-        "vol24hUsd": 69017024.7677303,
-        "liqUsd": 1724440.3181,
-        "buys24h": 73165,
-        "sells24h": 87897,
-        "fdvUsd": 1081106633.51056,
-        "marketCapUsd": 246451771.053225,
+        "priceUsd": 0.0102399708496078,
+        "px5mPct": 0.542,
+        "px1hPct": -0.441,
+        "px6hPct": -8.461,
+        "px24hPct": -11.762,
+        "vol6hUsd": 5361486.3032255,
+        "vol24hUsd": 52833612.1761009,
+        "liqUsd": 1695013.8518,
+        "buys24h": 53019,
+        "sells24h": 66132,
+        "fdvUsd": 1025054056.53594,
+        "marketCapUsd": 233673885.468862,
         "ca": "0x2c3a8ee94ddd97244a93bc48298f97d2c412f7db",
         "source": "geckoterminal",
-        "at": "2026-11-16T09:35:14.164Z"
+        "at": "2026-11-16T20:25:10.289Z"
       },
       "factors": [
         {
           "key": "layers",
           "label": "五层信号",
-          "score": -0.2,
-          "pts": -0.2,
-          "detail": "层信号 rawT=0.004、rawH=0.007，宏观系数 1.1，按 60% 计入。"
+          "score": -2.2,
+          "pts": -2.2,
+          "detail": "层信号 rawT=0、rawH=0.033，宏观系数 1.1，按 60% 计入。"
         },
         {
           "key": "momentum",
           "label": "标的动量",
-          "score": -0.053,
-          "pts": -1.1,
-          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-9.53%、px6hPct=+14.43%、px1hPct=-3.09%，合成 -1.06%。"
+          "score": -0.401,
+          "pts": -8,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=-11.76%、px6hPct=-8.46%、px1hPct=-0.44%，合成 -8.51%。"
         },
         {
           "key": "flow",
           "label": "买卖失衡",
-          "score": -0.183,
-          "pts": -1.8,
-          "detail": "24h 买卖笔数 73165/87897，失衡度 -0.091。"
+          "score": -0.22,
+          "pts": -2.2,
+          "detail": "24h 买卖笔数 53019/66132，失衡度 -0.11。"
         },
         {
           "key": "turnover",
           "label": "成交/流动性",
-          "score": 0,
-          "pts": 0,
-          "detail": "24h 成交额 69017025 美元、流动性 1724440 美元，换手 40.02x(甜区 2~15x,过高按赌场池衰减)。"
+          "score": 0.353,
+          "pts": 3.5,
+          "detail": "24h 成交额 52833612 美元、流动性 1695014 美元，换手 31.17x(甜区 2~15x,过高按赌场池衰减)。"
+        }
+      ],
+      "dataQuality": "ok"
+    },
+    {
+      "target": "EVAA",
+      "type": "onchain_spot",
+      "conviction": 11,
+      "tier": "flat",
+      "tierLabel": "空仓",
+      "tailwindLayers": [],
+      "headwindLayers": [
+        {
+          "layer": "chain",
+          "reason": "BSC 链上资金净流出",
+          "pts": 0.021
+        },
+        {
+          "layer": "链活动热度",
+          "reason": "BSC 协议收入动量降温",
+          "pts": 0.006
+        },
+        {
+          "layer": "dexCex",
+          "reason": "资金偏向 CEX 合约,现货承接弱",
+          "pts": 0.006
+        }
+      ],
+      "riskFlags": [
+        "流动性薄(<$30万)，出场滑点风险",
+        "极端换手(>25x,赌场池形态)，反转与滑点风险"
+      ],
+      "rationale": "仓位档:空仓 · 逆风:chain/链活动热度/dexCex · 风险:2 项",
+      "chainTag": "bsc",
+      "metrics": {
+        "priceUsd": 3.36490401571192,
+        "px5mPct": 0.116,
+        "px1hPct": 3.516,
+        "px6hPct": 18.516,
+        "px24hPct": 25.51,
+        "vol6hUsd": 3738256.5638287,
+        "vol24hUsd": 10320645.780059,
+        "liqUsd": 265702.6606,
+        "buys24h": 60788,
+        "sells24h": 71588,
+        "fdvUsd": 101673658.626295,
+        "marketCapUsd": 22429114.2074078,
+        "ca": "0xaa036928c9c0df07d525b55ea8ee690bb5a628c1",
+        "source": "geckoterminal",
+        "at": "2026-11-16T20:25:10.289Z"
+      },
+      "factors": [
+        {
+          "key": "layers",
+          "label": "五层信号",
+          "score": -2.2,
+          "pts": -2.2,
+          "detail": "层信号 rawT=0、rawH=0.033，宏观系数 1.1，按 60% 计入。"
+        },
+        {
+          "key": "momentum",
+          "label": "标的动量",
+          "score": 0.74,
+          "pts": 14.8,
+          "detail": "标的动量按可用周期重归一计算(正向单窗截 +30% 去追高)，px24hPct=+25.51%、px6hPct=+18.52%、px1hPct=+3.52%，合成 +19.01%。"
+        },
+        {
+          "key": "flow",
+          "label": "买卖失衡",
+          "score": -0.163,
+          "pts": -1.6,
+          "detail": "24h 买卖笔数 60788/71588，失衡度 -0.082。"
+        },
+        {
+          "key": "turnover",
+          "label": "成交/流动性",
+          "score": 0.046,
+          "pts": 0.5,
+          "detail": "24h 成交额 10320646 美元、流动性 265703 美元，换手 38.84x(甜区 2~15x,过高按赌场池衰减)。"
         }
       ],
       "dataQuality": "ok"
@@ -2031,54 +2010,54 @@
         "chain": "solana",
         "label": "SOL",
         "dataQuality": "ok",
-        "totalRevenue24h": 2673339,
+        "totalRevenue24h": 2765923,
         "topApps": [
           {
             "protocol": "pump.fun",
             "revenue24h": 794297,
             "revenue7d": 6049604,
-            "share": 29.7,
+            "share": 28.7,
             "momentum": -0.081,
             "direction": "cooling"
           },
           {
             "protocol": "Collector Crypt",
-            "revenue24h": 245107,
+            "revenue24h": 324105,
             "revenue7d": 1607507,
-            "share": 9.2,
-            "momentum": 0.067,
+            "share": 11.7,
+            "momentum": 0.411,
             "direction": "heating"
           },
           {
             "protocol": "PumpSwap",
             "revenue24h": 211370,
             "revenue7d": 1731296,
-            "share": 7.9,
+            "share": 7.6,
             "momentum": -0.145,
             "direction": "cooling"
           },
           {
-            "protocol": "Axiom",
-            "revenue24h": 175591,
-            "revenue7d": 1420425,
-            "share": 6.6,
-            "momentum": -0.135,
-            "direction": "cooling"
+            "protocol": "Jupiter Perpetual Exchange",
+            "revenue24h": 149868,
+            "revenue7d": 962835,
+            "share": 5.4,
+            "momentum": 0.09,
+            "direction": "heating"
           },
           {
             "protocol": "fomo Wallet",
-            "revenue24h": 171914,
-            "revenue7d": 1149027,
-            "share": 6.4,
-            "momentum": 0.047,
-            "direction": "flat"
+            "revenue24h": 143424,
+            "revenue7d": 1292442,
+            "share": 5.2,
+            "momentum": -0.223,
+            "direction": "cooling"
           }
         ],
         "chainHeat": true,
         "dominantApp": {
           "protocol": "pump.fun",
           "revenue24h": 794297,
-          "share": 29.7
+          "share": 28.7
         },
         "singleAppSpike": false
       },
@@ -2086,54 +2065,54 @@
         "chain": "base",
         "label": "Base",
         "dataQuality": "ok",
-        "totalRevenue24h": 755753,
+        "totalRevenue24h": 773455,
         "topApps": [
+          {
+            "protocol": "Aero Slipstream",
+            "revenue24h": 214263,
+            "revenue7d": 1695503,
+            "share": 27.7,
+            "momentum": -0.115,
+            "direction": "cooling"
+          },
           {
             "protocol": "Veranta",
             "revenue24h": 210743,
             "revenue7d": 387763,
-            "share": 27.9,
+            "share": 27.2,
             "momentum": 2.804,
             "direction": "heating"
-          },
-          {
-            "protocol": "Aero Slipstream",
-            "revenue24h": 190001,
-            "revenue7d": 1695503,
-            "share": 25.1,
-            "momentum": -0.216,
-            "direction": "cooling"
           },
           {
             "protocol": "Base",
             "revenue24h": 102337,
             "revenue7d": 797784,
-            "share": 13.5,
+            "share": 13.2,
             "momentum": -0.102,
             "direction": "cooling"
           },
           {
             "protocol": "Uniswap V3",
-            "revenue24h": 61683,
+            "revenue24h": 61580,
             "revenue7d": 531904,
-            "share": 8.2,
-            "momentum": -0.188,
+            "share": 8,
+            "momentum": -0.19,
             "direction": "cooling"
           },
           {
             "protocol": "Venice",
-            "revenue24h": 23752,
+            "revenue24h": 23875,
             "revenue7d": 627994,
             "share": 3.1,
-            "momentum": -0.735,
+            "momentum": -0.734,
             "direction": "cooling"
           }
         ],
         "chainHeat": true,
         "dominantApp": {
-          "protocol": "Veranta",
-          "revenue24h": 210743,
-          "share": 27.9
+          "protocol": "Aero Slipstream",
+          "revenue24h": 214263,
+          "share": 27.7
         },
         "singleAppSpike": false
       },
@@ -2141,46 +2120,46 @@
         "chain": "ethereum",
         "label": "ETH 主网",
         "dataQuality": "ok",
-        "totalRevenue24h": 1685292,
+        "totalRevenue24h": 1729184,
         "topApps": [
           {
             "protocol": "Sky Lending",
             "revenue24h": 535164,
             "revenue7d": 3410537,
-            "share": 31.8,
+            "share": 30.9,
             "momentum": 0.098,
             "direction": "heating"
           },
           {
-            "protocol": "Aave V3",
-            "revenue24h": 107728,
-            "revenue7d": 1265306,
-            "share": 6.4,
-            "momentum": -0.404,
-            "direction": "cooling"
-          },
-          {
             "protocol": "Titan Builder",
-            "revenue24h": 98903,
+            "revenue24h": 113537,
             "revenue7d": 2704149,
-            "share": 5.9,
-            "momentum": -0.744,
+            "share": 6.6,
+            "momentum": -0.706,
             "direction": "cooling"
           },
           {
-            "protocol": "Lido",
-            "revenue24h": 77660,
-            "revenue7d": 487618,
-            "share": 4.6,
-            "momentum": 0.115,
-            "direction": "heating"
+            "protocol": "Aave V3",
+            "revenue24h": 108961,
+            "revenue7d": 1265306,
+            "share": 6.3,
+            "momentum": -0.397,
+            "direction": "cooling"
           },
           {
             "protocol": "Ethereum",
-            "revenue24h": 76490,
+            "revenue24h": 78358,
             "revenue7d": 653988,
             "share": 4.5,
-            "momentum": -0.181,
+            "momentum": -0.161,
+            "direction": "cooling"
+          },
+          {
+            "protocol": "CoWSwap",
+            "revenue24h": 73868,
+            "revenue7d": 561496,
+            "share": 4.3,
+            "momentum": -0.079,
             "direction": "cooling"
           }
         ],
@@ -2188,7 +2167,7 @@
         "dominantApp": {
           "protocol": "Sky Lending",
           "revenue24h": 535164,
-          "share": 31.8
+          "share": 30.9
         },
         "singleAppSpike": false
       },
@@ -2196,37 +2175,37 @@
         "chain": "bsc",
         "label": "BSC",
         "dataQuality": "ok",
-        "totalRevenue24h": 542614,
+        "totalRevenue24h": 557438,
         "topApps": [
           {
             "protocol": "Flap sh",
-            "revenue24h": 98183,
+            "revenue24h": 120919,
             "revenue7d": 861121,
-            "share": 18.1,
-            "momentum": -0.202,
-            "direction": "cooling"
+            "share": 21.7,
+            "momentum": -0.017,
+            "direction": "flat"
           },
           {
             "protocol": "PancakeSwap AMM V3",
             "revenue24h": 66876,
             "revenue7d": 485132,
-            "share": 12.3,
+            "share": 12,
             "momentum": -0.035,
             "direction": "flat"
           },
           {
             "protocol": "Predict Fun",
-            "revenue24h": 63537,
+            "revenue24h": 61710,
             "revenue7d": 388243,
-            "share": 11.7,
-            "momentum": 0.146,
+            "share": 11.1,
+            "momentum": 0.113,
             "direction": "heating"
           },
           {
             "protocol": "GMGN",
             "revenue24h": 46003,
             "revenue7d": 534151,
-            "share": 8.5,
+            "share": 8.3,
             "momentum": -0.397,
             "direction": "cooling"
           },
@@ -2234,7 +2213,7 @@
             "protocol": "Ave.ai",
             "revenue24h": 35958,
             "revenue7d": 312949,
-            "share": 6.6,
+            "share": 6.5,
             "momentum": -0.196,
             "direction": "cooling"
           }
@@ -2242,8 +2221,8 @@
         "chainHeat": true,
         "dominantApp": {
           "protocol": "Flap sh",
-          "revenue24h": 98183,
-          "share": 18.1
+          "revenue24h": 120919,
+          "share": 21.7
         },
         "singleAppSpike": false
       },
@@ -2251,13 +2230,13 @@
         "chain": "robinhood",
         "label": "Robinhood",
         "dataQuality": "ok",
-        "totalRevenue24h": 289472,
+        "totalRevenue24h": 309640,
         "topApps": [
           {
             "protocol": "Lighter Robinhood Perps",
             "revenue24h": 79710,
             "revenue7d": 506154,
-            "share": 27.5,
+            "share": 25.7,
             "momentum": 0.102,
             "direction": "heating"
           },
@@ -2265,32 +2244,32 @@
             "protocol": "Arcus Perps",
             "revenue24h": 37309,
             "revenue7d": 383690,
-            "share": 12.9,
+            "share": 12,
             "momentum": -0.319,
             "direction": "cooling"
           },
           {
-            "protocol": "Aero Slipstream",
-            "revenue24h": 25211,
-            "revenue7d": 153883,
-            "share": 8.7,
-            "momentum": 0.147,
-            "direction": "heating"
-          },
-          {
             "protocol": "Uniswap V3",
-            "revenue24h": 20732,
+            "revenue24h": 30837,
             "revenue7d": 231111,
-            "share": 7.2,
-            "momentum": -0.372,
+            "share": 10,
+            "momentum": -0.066,
             "direction": "cooling"
           },
           {
-            "protocol": "Robinhood Chain",
-            "revenue24h": 19580,
-            "revenue7d": 180680,
-            "share": 6.8,
-            "momentum": -0.241,
+            "protocol": "Aero Slipstream",
+            "revenue24h": 28318,
+            "revenue7d": 153883,
+            "share": 9.1,
+            "momentum": 0.288,
+            "direction": "heating"
+          },
+          {
+            "protocol": "The Standard Reserve",
+            "revenue24h": 20877,
+            "revenue7d": 263627,
+            "share": 6.7,
+            "momentum": -0.446,
             "direction": "cooling"
           }
         ],
@@ -2298,7 +2277,7 @@
         "dominantApp": {
           "protocol": "Lighter Robinhood Perps",
           "revenue24h": 79710,
-          "share": 27.5
+          "share": 25.7
         },
         "singleAppSpike": false
       }
@@ -2306,14 +2285,14 @@
   },
   "stableTide": {
     "sideChannel": "stableTide",
-    "mcapUsd": 283509446373,
-    "spanHours": 2313.6,
+    "mcapUsd": 283049278532,
+    "spanHours": 2321.7,
     "points": 720,
     "note": "总量=钱进出 crypto 池子的变化;链间份额=池内轮动。旁路展示,不进五层引擎/conviction(v1)。",
     "direction": "outflow",
-    "delta24hPct": -0.153,
-    "delta7dPct": -2.478,
-    "emaGapPct": -0.684,
+    "delta24hPct": -0.291,
+    "delta7dPct": -2.496,
+    "emaGapPct": -0.672,
     "cusumAlarm": null,
     "dataQuality": "ok"
   },
